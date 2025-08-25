@@ -1,5 +1,5 @@
 // Campus Monopoly Game Client
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://campus-monopoly.onrender.com/';
 let socket = null;
 let gameState = {
     currentPlayer: null,
