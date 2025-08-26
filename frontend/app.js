@@ -515,10 +515,29 @@ function showPropertyInfo(event, building, position) {
     infoCard.innerHTML = content;
     infoCard.classList.remove('hidden');
     
-    // Position the card near the mouse
+    // Position the card above the property space
     const rect = event.target.getBoundingClientRect();
-    infoCard.style.left = `${rect.right + 10}px`;
-    infoCard.style.top = `${rect.top}px`;
+    const cardRect = infoCard.getBoundingClientRect();
+    
+    // Calculate position to center the card above the property
+    let left = rect.left + (rect.width / 2) - (200 / 2); // 200px is approximate card width
+    let top = rect.top - 10; // Position above the property with 10px gap
+    
+    // Ensure the card stays within viewport
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Adjust horizontal position if card would go off screen
+    if (left < 10) left = 10;
+    if (left + 200 > viewportWidth - 10) left = viewportWidth - 210;
+    
+    // If card would go above viewport, show it below the property instead
+    if (top < 10) {
+        top = rect.bottom + 10;
+    }
+    
+    infoCard.style.left = `${left}px`;
+    infoCard.style.top = `${top}px`;
 }
 
 function hidePropertyInfo() {
