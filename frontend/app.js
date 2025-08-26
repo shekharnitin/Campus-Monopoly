@@ -1,4 +1,4 @@
-// Campus Monopoly Game Client
+// Campus Monopoly Game Client - Enhanced Version
 const BACKEND_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:3001' 
     : 'https://campus-monopoly.onrender.com/';
@@ -63,29 +63,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function connectToServer() {
-    // Try to connect to backend, fallback to demo mode if not available
-    
-        socket = io(BACKEND_URL);
+    socket = io(BACKEND_URL);
 
-        socket.on('connect', () => {
-            console.log('Connected to server');
-            showStatus('Connected to server', 'success');
-        });
+    socket.on('connect', () => {
+        console.log('Connected to server');
+        showStatus('Connected to server', 'success');
+    });
 
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-            showStatus('Disconnected from server', 'error');
-        });
+    socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+        showStatus('Disconnected from server', 'error');
+    });
 
-        socket.on('error', (error) => {
-            console.error('Socket error:', error);
-            showStatus(error.message || 'Server error', 'error');
-        });
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        showStatus(error.message || 'Server error', 'error');
+    });
 
-        // Game event listeners
-        setupSocketListeners();
-
-    
+    setupSocketListeners();
 }
 
 function setupSocketListeners() {
@@ -124,7 +119,9 @@ function initializeUI() {
 
     // Initialize board
     createBoard();
+    createPropertyInfoCard();
 }
+
 function updateGameState(newState) {
     Object.assign(gameState, newState);
     updateUI();
@@ -135,6 +132,7 @@ function updateUI() {
     updateGameBoard();
     updatePlayersList(gameState.players || []);
 }
+
 function rollDice() {
     if (socket && socket.connected) {
         // Add rolling animation
@@ -237,7 +235,6 @@ function startGame() {
     }
 }
 
-
 function endGame() {
     if (confirm('Are you sure you want to end the game?')) {
         showMainMenu();
@@ -250,8 +247,6 @@ function copyGameCode() {
         showStatus('Game code copied to clipboard!', 'success');
     });
 }
-
-
 
 function buyProperty() {
     if (socket && socket.connected) {
@@ -283,10 +278,11 @@ function handleGameCreated(data) {
     gameState.isHost = true;
     gameState.gameCode = data.gameCode;
     gameState.gamePhase = 'waiting';
+    gameState.players = data.game.players;
 
     document.getElementById('hostGameCode').textContent = data.gameCode;
     showScreen('hostDashboard');
-    updatePlayersList([]);
+    updatePlayersList(data.game.players);
 }
 
 function handleGameJoined(data) {
@@ -294,16 +290,18 @@ function handleGameJoined(data) {
     gameState.gameCode = data.gameCode;
     gameState.currentPlayer = data.player;
     gameState.gamePhase = 'waiting';
+    gameState.players = data.game.players;
 
     document.getElementById('waitingGameCode').textContent = data.gameCode;
 
     showStatus(`Joined game ${data.gameCode} successfully!`, 'success');
-    showScreen('playerWaiting'); // Show waiting screen
+    showScreen('playerWaiting');
 }
 
 function handlePlayerJoined(data) {
     if (gameState.isHost) {
-        updatePlayersList(data.game ? data.game.players : []);
+        gameState.players = data.game.players;
+        updatePlayersList(data.game.players);
     }
 }
 
@@ -316,15 +314,23 @@ function handleGameStarted(data) {
     showScreen('gameBoard');
     updateGameBoard();
     updatePlayerInfo();
+    updatePlayerPieces();
 }
 
 function handleDiceRolled(data) {
     updateDiceDisplay(data.dice[0], data.dice[1]);
     addToGameLog(`${data.player.name} rolled ${data.dice[0]} + ${data.dice[1]} = ${data.totalRoll}`);
 
+    // Update game state with new player positions
+    gameState.players = data.game.players;
+    gameState.currentPlayer = data.player;
+    
+    // Animate player movement
+    animatePlayerMovement(data.player, data.newPosition);
+
     // Show property action buttons if landed on purchasable property
     const property = data.landedProperty;
-    if (property.type === 'property' && !property.owner) {
+    if (['property', 'transport', 'utility'].includes(property.type) && !property.owner) {
         document.getElementById('buyPropertyBtn').style.display = 'inline-block';
     }
 
@@ -333,17 +339,27 @@ function handleDiceRolled(data) {
 
 function handlePropertyPurchased(data) {
     addToGameLog(`${data.player.name} bought ${data.property.name} for ₹${data.property.price}`);
+    
+    // Update game state
+    gameState.players = data.game.players;
+    gameState.board = data.game.board;
+    
     updatePlayerInfo();
+    updateGameBoard();
     document.getElementById('buyPropertyBtn').style.display = 'none';
 }
 
 function handleRentPaid(data) {
     addToGameLog(`${data.payer.name} paid ₹${data.amount} rent to ${data.receiver.name}`);
+    
+    // Update game state
+    gameState.players = data.game.players;
     updatePlayerInfo();
 }
 
 function handleTurnEnded(data) {
     gameState.currentPlayer = data.nextPlayer;
+    gameState.players = data.game.players;
     updatePlayerInfo();
 
     // Hide action buttons
@@ -400,10 +416,10 @@ function createBoard() {
     campusBuildings.forEach((building, index) => {
         const space = document.createElement('div');
         space.className = `board-space ${building.color || building.type}`;
-        space.innerHTML = `<div class="space-name">${building.name}</div>`;
-        if (building.price) {
-            space.innerHTML += `<div class="space-price">₹${building.price}</div>`;
-        }
+        space.innerHTML = `
+            <div class="space-name">${building.name}</div>
+            ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
+        `;
         space.id = `space-${index}`;
 
         // Position spaces in rectangle (Monopoly board layout)
@@ -431,8 +447,83 @@ function createBoard() {
         space.style.width = '80px';  
         space.style.height = '60px';
 
+        // Add hover events for property info
+        if (building.type === 'property' || building.type === 'transport' || building.type === 'utility') {
+            space.addEventListener('mouseenter', (e) => showPropertyInfo(e, building, index));
+            space.addEventListener('mouseleave', hidePropertyInfo);
+        }
+
         boardSpaces.appendChild(space);
     });
+}
+
+function createPropertyInfoCard() {
+    const infoCard = document.createElement('div');
+    infoCard.id = 'property-info-card';
+    infoCard.className = 'property-info-card hidden';
+    document.body.appendChild(infoCard);
+}
+
+function showPropertyInfo(event, building, position) {
+    const infoCard = document.getElementById('property-info-card');
+    const boardProperty = gameState.board && gameState.board[position] ? gameState.board[position] : building;
+    
+    let content = `<h3>${building.name}</h3>`;
+    
+    if (building.type === 'property') {
+        content += `
+            <div class="property-price">Price: ₹${building.price}</div>
+            <div class="property-rent">
+                <strong>Rent:</strong><br>
+                Base: ₹${building.rent[0]}<br>
+                1 House: ₹${building.rent[1]}<br>
+                2 Houses: ₹${building.rent[2]}<br>
+                3 Houses: ₹${building.rent[3]}<br>
+                4 Houses: ₹${building.rent[4]}<br>
+                Hotel: ₹${building.rent[5]}
+            </div>
+        `;
+    } else if (building.type === 'transport') {
+        content += `
+            <div class="property-price">Price: ₹${building.price}</div>
+            <div class="property-rent">
+                <strong>Rent:</strong><br>
+                1 Transport: ₹25<br>
+                2 Transports: ₹50<br>
+                3 Transports: ₹100<br>
+                4 Transports: ₹200
+            </div>
+        `;
+    } else if (building.type === 'utility') {
+        content += `
+            <div class="property-price">Price: ₹${building.price}</div>
+            <div class="property-rent">
+                <strong>Rent:</strong><br>
+                1 Utility: 4 × dice roll<br>
+                2 Utilities: 10 × dice roll
+            </div>
+        `;
+    }
+    
+    if (boardProperty.owner) {
+        const owner = gameState.players.find(p => p.id === boardProperty.owner);
+        if (owner) {
+            content += `<div class="property-owner">Owner: ${owner.name} ${owner.token}</div>`;
+        }
+    }
+    
+    infoCard.innerHTML = content;
+    infoCard.classList.remove('hidden');
+    
+    // Position the card near the mouse
+    const rect = event.target.getBoundingClientRect();
+    infoCard.style.left = `${rect.right + 10}px`;
+    infoCard.style.top = `${rect.top}px`;
+}
+
+function hidePropertyInfo() {
+    const infoCard = document.getElementById('property-info-card');
+    infoCard.classList.add('hidden');
 }
 
 function updateGameBoard() {
@@ -442,9 +533,79 @@ function updateGameBoard() {
             const spaceElement = document.getElementById(`space-${index}`);
             if (spaceElement && space.owner) {
                 spaceElement.classList.add('owned');
+                
+                // Add owner indicator
+                const owner = gameState.players.find(p => p.id === space.owner);
+                if (owner) {
+                    spaceElement.style.borderColor = getPlayerColor(owner.token);
+                }
             }
         });
     }
+    updatePlayerPieces();
+}
+
+function updatePlayerPieces() {
+    // Remove all existing player pieces
+    document.querySelectorAll('.player-piece').forEach(piece => piece.remove());
+    
+    if (!gameState.players) return;
+    
+    // Add player pieces to their current positions
+    gameState.players.forEach((player, playerIndex) => {
+        if (player.bankrupt) return;
+        
+        const spaceElement = document.getElementById(`space-${player.position}`);
+        if (spaceElement) {
+            const piece = document.createElement('div');
+            piece.className = 'player-piece';
+            piece.textContent = player.token;
+            piece.style.backgroundColor = getPlayerColor(player.token);
+            piece.title = player.name;
+            
+            // Position multiple pieces on the same space
+            const existingPieces = spaceElement.querySelectorAll('.player-piece');
+            piece.style.left = `${5 + (existingPieces.length * 15)}px`;
+            piece.style.top = `${5}px`;
+            
+            spaceElement.appendChild(piece);
+        }
+    });
+}
+
+function animatePlayerMovement(player, newPosition) {
+    // Find and remove the old piece
+    document.querySelectorAll('.player-piece').forEach(piece => {
+        if (piece.textContent === player.token && piece.title === player.name) {
+            piece.remove();
+        }
+    });
+    
+    // Add piece to new position with animation
+    setTimeout(() => {
+        updatePlayerPieces();
+        
+        // Highlight the new position briefly
+        const newSpace = document.getElementById(`space-${newPosition}`);
+        if (newSpace) {
+            newSpace.classList.add('highlight');
+            setTimeout(() => newSpace.classList.remove('highlight'), 2000);
+        }
+    }, 500);
+}
+
+function getPlayerColor(token) {
+    const colors = {
+        '🎓': '#ff6b35', // Orange
+        '📚': '#4ecdc4', // Teal  
+        '⚗️': '#45b7d1', // Blue
+        '🏗️': '#96ceb4', // Green
+        '🎯': '#ffeaa7', // Yellow
+        '🏆': '#dda0dd', // Plum
+        '🎨': '#ff7675', // Red
+        '🔬': '#a29bfe'  // Purple
+    };
+    return colors[token] || '#666';
 }
 
 function updatePlayerInfo() {
@@ -452,7 +613,7 @@ function updatePlayerInfo() {
     const moneyEl = document.getElementById('currentPlayerMoney');
 
     if (gameState.currentPlayer) {
-        nameEl.textContent = gameState.currentPlayer.name;
+        nameEl.textContent = `${gameState.currentPlayer.token} ${gameState.currentPlayer.name}`;
         moneyEl.textContent = `₹${gameState.currentPlayer.money}`;
     }
 }
@@ -481,7 +642,6 @@ function addToGameLog(message) {
 function showStatus(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 
-    // You could implement a toast notification system here
     const statusDiv = document.createElement('div');
     statusDiv.className = `status-message status-${type}`;
     statusDiv.textContent = message;
