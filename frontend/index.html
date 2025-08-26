@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IIT (ISM) Dhanbad Campus Monopoly</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- Main Menu -->
     <div id="mainMenu" class="screen">
@@ -34,6 +36,20 @@
             <div class="menu-buttons">
                 <button class="btn btn--primary" id="joinGameSubmitBtn">Join Game</button>
                 <button class="btn btn--outline" id="backToMenuBtn">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Waiting Screen -->
+    <div id="playerWaiting" class="screen hidden">
+        <div class="waiting-container">
+            <h2>Joined Game Successfully!</h2>
+            <div class="game-info">
+                <p>Game Code: <strong id="waitingGameCode"></strong></p>
+                <p>Waiting for host to start the game...</p>
+            </div>
+            <div class="waiting-animation">
+                <div class="spinner"></div>
             </div>
         </div>
     </div>
@@ -80,7 +96,8 @@
                 <div class="game-actions">
                     <button class="btn btn--primary" id="rollDiceBtn">🎲 Roll Dice</button>
                     <button class="btn btn--success" id="buyPropertyBtn" style="display: none;">💰 Buy Property</button>
-                    <button class="btn btn--warning" id="sellPropertyBtn" style="display: none;">🏪 Sell Property</button>
+                    <button class="btn btn--warning" id="sellPropertyBtn" style="display: none;">🏪 Sell
+                        Property</button>
                     <button class="btn btn--outline" id="endTurnBtn" style="display: none;">⏭️ End Turn</button>
                 </div>
             </div>
@@ -116,4 +133,5 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

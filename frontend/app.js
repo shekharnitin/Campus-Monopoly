@@ -1,5 +1,7 @@
 // Campus Monopoly Game Client
-const BACKEND_URL = 'https://campus-monopoly.onrender.com/';
+const BACKEND_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://campus-monopoly.onrender.com/';
 let socket = null;
 let gameState = {
     currentPlayer: null,
@@ -122,6 +124,33 @@ function initializeUI() {
 
     // Initialize board
     createBoard();
+}
+function updateGameState(newState) {
+    Object.assign(gameState, newState);
+    updateUI();
+}
+
+function updateUI() {
+    updatePlayerInfo();
+    updateGameBoard();
+    updatePlayersList(gameState.players || []);
+}
+function rollDice() {
+    if (socket && socket.connected) {
+        // Add rolling animation
+        const dice1El = document.getElementById('dice1');
+        const dice2El = document.getElementById('dice2');
+        
+        dice1El.classList.add('rolling');
+        dice2El.classList.add('rolling');
+        
+        setTimeout(() => {
+            dice1El.classList.remove('rolling');
+            dice2El.classList.remove('rolling');
+        }, 1000);
+        
+        socket.emit('rollDice');
+    }
 }
 
 function showScreen(screenId) {
@@ -373,18 +402,34 @@ function createBoard() {
     campusBuildings.forEach((building, index) => {
         const space = document.createElement('div');
         space.className = `board-space ${building.color || building.type}`;
-        space.textContent = building.name;
+        space.innerHTML = `<div class="space-name">${building.name}</div>`;
+        if (building.price) {
+            space.innerHTML += `<div class="space-price">₹${building.price}</div>`;
+        }
         space.id = `space-${index}`;
 
-        // Position the space on the board (this is simplified)
-        const angle = (index / 40) * 360;
-        const x = 50 + 40 * Math.cos(angle * Math.PI / 180);
-        const y = 50 + 40 * Math.sin(angle * Math.PI / 180);
+        // Position spaces in rectangle (Monopoly board layout)
+        let x, y;
+        if (index <= 10) {
+            // Bottom row (right to left)
+            x = 90 - (index * 8);
+            y = 90;
+        } else if (index <= 20) {
+            // Left column (bottom to top)
+            x = 10;
+            y = 90 - ((index - 10) * 8);
+        } else if (index <= 30) {
+            // Top row (left to right)
+            x = 10 + ((index - 20) * 8);
+            y = 10;
+        } else {
+            // Right column (top to bottom)
+            x = 90;
+            y = 10 + ((index - 30) * 8);
+        }
 
         space.style.left = `${x}%`;
         space.style.top = `${y}%`;
-        space.style.width = '80px';
-        space.style.height = '60px';
 
         boardSpaces.appendChild(space);
     });

@@ -27,46 +27,46 @@ const players = new Map();
 
 // Campus buildings data
 const campusBuildings = [
-    {"name": "Main Gate", "type": "start", "position": 0},
-    {"name": "Old Library Building", "type": "property", "position": 1, "price": 60, "color": "brown", "rent": [2, 10, 30, 90, 160, 250]},
-    {"name": "Community Chest", "type": "community_chest", "position": 2},
-    {"name": "Main Heritage Building", "type": "property", "position": 3, "price": 80, "color": "brown", "rent": [4, 20, 60, 180, 320, 450]},
-    {"name": "Income Tax", "type": "tax", "position": 4, "amount": 200},
-    {"name": "Bus Stop", "type": "transport", "position": 5, "price": 200},
-    {"name": "NLHC", "type": "property", "position": 6, "price": 100, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550]},
-    {"name": "Chance", "type": "chance", "position": 7},
-    {"name": "DLHC", "type": "property", "position": 8, "price": 120, "color": "light_blue", "rent": [8, 40, 100, 300, 450, 600]},
-    {"name": "CLT", "type": "property", "position": 9, "price": 140, "color": "light_blue", "rent": [10, 50, 150, 450, 625, 750]},
-    {"name": "Jail", "type": "jail", "position": 10},
-    {"name": "Central Research Facility", "type": "property", "position": 11, "price": 140, "color": "pink", "rent": [10, 50, 150, 450, 625, 750]},
-    {"name": "Wi-Fi Network", "type": "utility", "position": 12, "price": 150},
-    {"name": "Science Block", "type": "property", "position": 13, "price": 160, "color": "pink", "rent": [12, 60, 180, 500, 700, 900]},
-    {"name": "Management Studies", "type": "property", "position": 14, "price": 180, "color": "pink", "rent": [14, 70, 200, 550, 750, 950]},
-    {"name": "Cycle Stand", "type": "transport", "position": 15, "price": 200},
-    {"name": "Computer Science", "type": "property", "position": 16, "price": 180, "color": "orange", "rent": [14, 70, 200, 550, 750, 950]},
-    {"name": "Community Chest", "type": "community_chest", "position": 17},
-    {"name": "Petroleum Engineering", "type": "property", "position": 18, "price": 200, "color": "orange", "rent": [16, 80, 220, 600, 800, 1000]},
-    {"name": "Environmental Science", "type": "property", "position": 19, "price": 220, "color": "orange", "rent": [18, 90, 250, 700, 875, 1050]},
-    {"name": "Free Parking", "type": "free_parking", "position": 20},
-    {"name": "Jasper Hostel", "type": "property", "position": 21, "price": 220, "color": "red", "rent": [18, 90, 250, 700, 875, 1050]},
-    {"name": "Chance", "type": "chance", "position": 22},
-    {"name": "Sapphire Hostel", "type": "property", "position": 23, "price": 240, "color": "red", "rent": [20, 100, 300, 750, 925, 1100]},
-    {"name": "New Rosaline Hostel", "type": "property", "position": 24, "price": 260, "color": "red", "rent": [22, 110, 330, 800, 975, 1150]},
-    {"name": "Auto Stand", "type": "transport", "position": 25, "price": 200},
-    {"name": "Sports Complex", "type": "property", "position": 26, "price": 260, "color": "yellow", "rent": [22, 110, 330, 800, 975, 1150]},
-    {"name": "Swimming Pool", "type": "property", "position": 27, "price": 280, "color": "yellow", "rent": [24, 120, 360, 850, 1025, 1200]},
-    {"name": "Power Grid", "type": "utility", "position": 28, "price": 150},
-    {"name": "SAC", "type": "property", "position": 29, "price": 300, "color": "yellow", "rent": [26, 130, 390, 900, 1100, 1275]},
-    {"name": "Go to Jail", "type": "go_to_jail", "position": 30},
-    {"name": "New Central Library", "type": "property", "position": 31, "price": 300, "color": "green", "rent": [26, 130, 390, 900, 1100, 1275]},
-    {"name": "Centre of Excellence", "type": "property", "position": 32, "price": 320, "color": "green", "rent": [28, 150, 450, 1000, 1200, 1400]},
-    {"name": "Community Chest", "type": "community_chest", "position": 33},
-    {"name": "Central Library Reading Room", "type": "property", "position": 34, "price": 320, "color": "green", "rent": [28, 150, 450, 1000, 1200, 1400]},
-    {"name": "Metro Station", "type": "transport", "position": 35, "price": 200},
-    {"name": "Chance", "type": "chance", "position": 36},
-    {"name": "Seismological Observatory", "type": "property", "position": 37, "price": 350, "color": "blue", "rent": [35, 175, 500, 1100, 1300, 1500]},
-    {"name": "Luxury Tax", "type": "tax", "position": 38, "amount": 100},
-    {"name": "Shooting Range", "type": "property", "position": 39, "price": 400, "color": "blue", "rent": [50, 200, 600, 1400, 1700, 2000]}
+    { "name": "Main Gate", "type": "start", "position": 0 },
+    { "name": "Old Library Building", "type": "property", "position": 1, "price": 60, "color": "brown", "rent": [2, 10, 30, 90, 160, 250] },
+    { "name": "Community Chest", "type": "community_chest", "position": 2 },
+    { "name": "Main Heritage Building", "type": "property", "position": 3, "price": 80, "color": "brown", "rent": [4, 20, 60, 180, 320, 450] },
+    { "name": "Income Tax", "type": "tax", "position": 4, "amount": 200 },
+    { "name": "Bus Stop", "type": "transport", "position": 5, "price": 200 },
+    { "name": "NLHC", "type": "property", "position": 6, "price": 100, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
+    { "name": "Chance", "type": "chance", "position": 7 },
+    { "name": "DLHC", "type": "property", "position": 8, "price": 120, "color": "light_blue", "rent": [8, 40, 100, 300, 450, 600] },
+    { "name": "CLT", "type": "property", "position": 9, "price": 140, "color": "light_blue", "rent": [10, 50, 150, 450, 625, 750] },
+    { "name": "Jail", "type": "jail", "position": 10 },
+    { "name": "Central Research Facility", "type": "property", "position": 11, "price": 140, "color": "pink", "rent": [10, 50, 150, 450, 625, 750] },
+    { "name": "Wi-Fi Network", "type": "utility", "position": 12, "price": 150 },
+    { "name": "Science Block", "type": "property", "position": 13, "price": 160, "color": "pink", "rent": [12, 60, 180, 500, 700, 900] },
+    { "name": "Management Studies", "type": "property", "position": 14, "price": 180, "color": "pink", "rent": [14, 70, 200, 550, 750, 950] },
+    { "name": "Cycle Stand", "type": "transport", "position": 15, "price": 200 },
+    { "name": "Computer Science", "type": "property", "position": 16, "price": 180, "color": "orange", "rent": [14, 70, 200, 550, 750, 950] },
+    { "name": "Community Chest", "type": "community_chest", "position": 17 },
+    { "name": "Petroleum Engineering", "type": "property", "position": 18, "price": 200, "color": "orange", "rent": [16, 80, 220, 600, 800, 1000] },
+    { "name": "Environmental Science", "type": "property", "position": 19, "price": 220, "color": "orange", "rent": [18, 90, 250, 700, 875, 1050] },
+    { "name": "Free Parking", "type": "free_parking", "position": 20 },
+    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 220, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
+    { "name": "Chance", "type": "chance", "position": 22 },
+    { "name": "Sapphire Hostel", "type": "property", "position": 23, "price": 240, "color": "red", "rent": [20, 100, 300, 750, 925, 1100] },
+    { "name": "New Rosaline Hostel", "type": "property", "position": 24, "price": 260, "color": "red", "rent": [22, 110, 330, 800, 975, 1150] },
+    { "name": "Auto Stand", "type": "transport", "position": 25, "price": 200 },
+    { "name": "Sports Complex", "type": "property", "position": 26, "price": 260, "color": "yellow", "rent": [22, 110, 330, 800, 975, 1150] },
+    { "name": "Swimming Pool", "type": "property", "position": 27, "price": 280, "color": "yellow", "rent": [24, 120, 360, 850, 1025, 1200] },
+    { "name": "Power Grid", "type": "utility", "position": 28, "price": 150 },
+    { "name": "SAC", "type": "property", "position": 29, "price": 300, "color": "yellow", "rent": [26, 130, 390, 900, 1100, 1275] },
+    { "name": "Go to Jail", "type": "go_to_jail", "position": 30 },
+    { "name": "New Central Library", "type": "property", "position": 31, "price": 300, "color": "green", "rent": [26, 130, 390, 900, 1100, 1275] },
+    { "name": "Centre of Excellence", "type": "property", "position": 32, "price": 320, "color": "green", "rent": [28, 150, 450, 1000, 1200, 1400] },
+    { "name": "Community Chest", "type": "community_chest", "position": 33 },
+    { "name": "Central Library Reading Room", "type": "property", "position": 34, "price": 320, "color": "green", "rent": [28, 150, 450, 1000, 1200, 1400] },
+    { "name": "Metro Station", "type": "transport", "position": 35, "price": 200 },
+    { "name": "Chance", "type": "chance", "position": 36 },
+    { "name": "Seismological Observatory", "type": "property", "position": 37, "price": 350, "color": "blue", "rent": [35, 175, 500, 1100, 1300, 1500] },
+    { "name": "Luxury Tax", "type": "tax", "position": 38, "amount": 100 },
+    { "name": "Shooting Range", "type": "property", "position": 39, "price": 400, "color": "blue", "rent": [50, 200, 600, 1400, 1700, 2000] }
 ];
 
 const gameConfig = {
@@ -161,15 +161,15 @@ function movePlayer(game, playerId, steps) {
     player.position = (player.position + steps) % 40;
 
     // Collect salary if passed START
-    if (player.position < oldPosition || (oldPosition < 40 && player.position >= 0)) {
-        player.money += gameConfig.salaryAmount;
-        game.gameLog.push(`${player.name} passed Main Gate and collected ₹${gameConfig.salaryAmount}`);
-    }
+   if (oldPosition + steps >= 40) {
+    player.money += gameConfig.salaryAmount;
+    game.gameLog.push(`${player.name} passed Main Gate and collected ₹${gameConfig.salaryAmount}`);
+}
 
     return true;
 }
 
-function calculateRent(property, game) {
+function calculateRent(property, game, lastDiceRoll = [1, 1]) {
     if (property.type === 'transport') {
         const ownedTransports = game.board.filter(p => 
             p.type === 'transport' && p.owner === property.owner
@@ -181,9 +181,8 @@ function calculateRent(property, game) {
         const ownedUtilities = game.board.filter(p => 
             p.type === 'utility' && p.owner === property.owner
         ).length;
-        const diceRoll = rollDice();
         const multiplier = ownedUtilities === 1 ? 4 : 10;
-        return (diceRoll[0] + diceRoll[1]) * multiplier;
+        return (lastDiceRoll[0] + lastDiceRoll[1]) * multiplier;
     }
 
     if (property.type === 'property') {
@@ -199,8 +198,8 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'healthy', 
+    res.json({
+        status: 'healthy',
         timestamp: new Date(),
         activeGames: games.size,
         activePlayers: players.size
@@ -238,16 +237,29 @@ io.on('connection', (socket) => {
             }
 
             const game = createNewGame(value.hostName, socket.id);
+            const hostPlayer = {
+                id: uuidv4(),
+                socketId: socket.id,
+                name: value.hostName,
+                money: gameConfig.startingMoney,
+                position: 0,
+                properties: [],
+                inJail: false,
+                jailTurns: 0,
+                token: playerTokens[0],
+                bankrupt: false
+            };
+            game.players.push(hostPlayer);
+
             socket.join(game.code);
             players.set(socket.id, { gameCode: game.code, playerId: hostPlayer.id, isHost: true });
-            const hostPlayer = game.players.find(p => p.socketId === socket.id);
-    if (hostPlayer) {
-      players.set(socket.id, {
-        gameCode: game.code,
-        playerId: hostPlayer.id,
-        isHost: true
-      });
-    }
+            if (hostPlayer) {
+                players.set(socket.id, {
+                    gameCode: game.code,
+                    playerId: hostPlayer.id,
+                    isHost: true
+                });
+            }
 
 
             socket.emit('gameCreated', {
@@ -385,36 +397,47 @@ io.on('connection', (socket) => {
 
         const game = games.get(playerInfo.gameCode);
         const player = game.players.find(p => p.socketId === socket.id);
-        const property = game.board[player.position];
 
-        if (!property || !['property', 'transport', 'utility'].includes(property.type)) {
-            socket.emit('error', { message: 'Cannot buy this space' });
-            return;
-        }
+        // Check if it's player's turn
+    const currentPlayer = game.players[game.currentPlayerIndex];
+    if (currentPlayer.socketId !== socket.id) {
+        socket.emit('error', { message: 'Not your turn' });
+        return;
+    }
 
-        if (property.owner) {
-            socket.emit('error', { message: 'Property already owned' });
-            return;
-        }
+    const property = game.board[player.position];
 
-        if (player.money < property.price) {
-            socket.emit('error', { message: 'Insufficient funds' });
-            return;
-        }
+    // Validation checks
+    if (!property || !['property', 'transport', 'utility'].includes(property.type)) {
+        socket.emit('error', { message: 'Cannot buy this space' });
+        return;
+    }
 
-        player.money -= property.price;
-        property.owner = player.id;
-        player.properties.push(property.position);
+    if (property.owner) {
+        socket.emit('error', { message: 'Property already owned' });
+        return;
+    }
 
-        game.gameLog.push(`${player.name} bought ${property.name} for ₹${property.price}`);
+    if (player.money < property.price) {
+        socket.emit('error', { message: 'Insufficient funds' });
+        return;
+    }
 
-        io.to(game.code).emit('propertyPurchased', {
-            player: player,
-            property: property,
-            game: game
-        });
+    // Execute purchase
+    player.money -= property.price;
+    property.owner = player.id;
+    player.properties.push(property.position);
 
-        endPlayerTurn(game);
+    game.gameLog.push(`${player.name} bought ${property.name} for ₹${property.price}`);
+
+    io.to(game.code).emit('propertyPurchased', {
+        player: player,
+        property: property,
+        game: game
+    });
+
+    // Don't auto-end turn - let player choose
+
     });
 
     socket.on('endTurn', (data) => {
