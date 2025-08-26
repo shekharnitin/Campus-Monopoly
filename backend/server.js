@@ -239,6 +239,16 @@ io.on('connection', (socket) => {
 
             const game = createNewGame(value.hostName, socket.id);
             socket.join(game.code);
+            players.set(socket.id, { gameCode: game.code, playerId: hostPlayer.id, isHost: true });
+            const hostPlayer = game.players.find(p => p.socketId === socket.id);
+    if (hostPlayer) {
+      players.set(socket.id, {
+        gameCode: game.code,
+        playerId: hostPlayer.id,
+        isHost: true
+      });
+    }
+
 
             socket.emit('gameCreated', {
                 gameCode: game.code,

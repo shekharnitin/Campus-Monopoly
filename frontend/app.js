@@ -202,6 +202,7 @@ function startGame() {
     }
 }
 
+
 function endGame() {
     if (confirm('Are you sure you want to end the game?')) {
         showMainMenu();
