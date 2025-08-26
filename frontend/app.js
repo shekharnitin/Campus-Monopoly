@@ -19,23 +19,23 @@ const campusBuildings = [
     { "name": "Community Chest", "type": "community_chest", "position": 2 },
     { "name": "Heritage Building", "type": "property", "position": 3, "price": 80, "color": "brown", "rent": [4, 20, 60, 180, 320, 450] },
     { "name": "Income Tax", "type": "tax", "position": 4, "amount": 200 },
-    { "name": "RD", "type": "property", "position": 5, "price": 200 },
+    { "name": "RD", "type": "property", "position": 5, "price": 200, "color": "blue", "rent": [8, 40, 100, 300, 450, 600]},
     { "name": "NLHC", "type": "property", "position": 6, "price": 100, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
     { "name": "Chance", "type": "chance", "position": 7 },
-    { "name": "OAT", "type": "property", "position": 8, "price": 120, "color": "light_blue", "rent": [8, 40, 100, 300, 450, 600] },
-    { "name": "Penman Auditorium", "type": "property", "position": 9, "price": 140, "color": "light_blue", "rent": [10, 50, 150, 450, 625, 750] },
+    { "name": "OAT", "type": "property", "position": 8, "price": 120, "color": "blue", "rent": [8, 40, 100, 300, 450, 600] },
+    { "name": "Penman Auditorium", "type": "property", "position": 9, "price": 140, "color": "blue", "rent": [10, 50, 150, 450, 625, 750] },
     { "name": "Jail", "type": "jail", "position": 10 },
     { "name": "Central Research Facility", "type": "property", "position": 11, "price": 140, "color": "pink", "rent": [10, 50, 150, 450, 625, 750] },
     { "name": "Wi-Fi Network", "type": "utility", "position": 12, "price": 150 },
-    { "name": "Science Block", "type": "property", "position": 13, "price": 160, "color": "pink", "rent": [12, 60, 180, 500, 700, 900] },
-    { "name": "Management Studies", "type": "property", "position": 14, "price": 180, "color": "pink", "rent": [14, 70, 200, 550, 750, 950] },
+    { "name": "Science Block", "type": "property", "position": 13, "price": 160, "color": "orange", "rent": [12, 60, 180, 500, 700, 900] },
+    { "name": "Management Studies", "type": "property", "position": 14, "price": 180, "color": "orange", "rent": [14, 70, 200, 550, 750, 950] },
     { "name": "Cycle Stand", "type": "transport", "position": 15, "price": 200 },
     { "name": "Computer Science", "type": "property", "position": 16, "price": 180, "color": "orange", "rent": [14, 70, 200, 550, 750, 950] },
     { "name": "Community Chest", "type": "community_chest", "position": 17 },
     { "name": "Petroleum Engineering", "type": "property", "position": 18, "price": 200, "color": "orange", "rent": [16, 80, 220, 600, 800, 1000] },
     { "name": "Environmental Science", "type": "property", "position": 19, "price": 220, "color": "orange", "rent": [18, 90, 250, 700, 875, 1050] },
     { "name": "Free Parking", "type": "free_parking", "position": 20 },
-    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 220, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
+    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 120, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
     { "name": "Chance", "type": "chance", "position": 22 },
     { "name": "Sapphire Hostel", "type": "property", "position": 23, "price": 240, "color": "red", "rent": [20, 100, 300, 750, 925, 1100] },
     { "name": "New Rosaline Hostel", "type": "property", "position": 24, "price": 260, "color": "red", "rent": [22, 110, 330, 800, 975, 1150] },
@@ -43,13 +43,13 @@ const campusBuildings = [
     { "name": "Sports Complex", "type": "property", "position": 26, "price": 260, "color": "yellow", "rent": [22, 110, 330, 800, 975, 1150] },
     { "name": "Swimming Pool", "type": "property", "position": 27, "price": 280, "color": "yellow", "rent": [24, 120, 360, 850, 1025, 1200] },
     { "name": "Power Grid", "type": "utility", "position": 28, "price": 150 },
-    { "name": "SAC", "type": "property", "position": 29, "price": 300, "color": "yellow", "rent": [26, 130, 390, 900, 1100, 1275] },
+    { "name": "SAC", "type": "property", "position": 29, "price": 300, "color": "blue", "rent": [26, 130, 390, 900, 1100, 1275] },
     { "name": "Go to Jail", "type": "go_to_jail", "position": 30 },
     { "name": "Central Library", "type": "property", "position": 31, "price": 300, "color": "green", "rent": [26, 130, 390, 900, 1100, 1275] },
-    { "name": "Opal Hostel", "type": "property", "position": 32, "price": 320, "color": "green", "rent": [28, 150, 450, 1000, 1200, 1400] },
+    { "name": "Opal Hostel", "type": "property", "position": 32, "price": 280, "color": "red", "rent": [28, 150, 450, 1000, 1200, 1400] },
     { "name": "Community Chest", "type": "community_chest", "position": 33 },
-    { "name": "Aquamarine Hostel", "type": "property", "position": 34, "price": 320, "color": "green", "rent": [28, 150, 450, 1000, 1200, 1400] },
-    { "name": "NAC", "type": "property", "position": 35, "price": 200 },
+    { "name": "Aquamarine Hostel", "type": "property", "position": 34, "price": 320, "color": "red", "rent": [28, 150, 450, 1000, 1200, 1400] },
+    { "name": "NAC", "type": "property", "position": 35, "price": 200, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
     { "name": "Chance", "type": "chance", "position": 36 },
     { "name": "EDC", "type": "property", "position": 37, "price": 350, "color": "blue", "rent": [35, 175, 500, 1100, 1300, 1500] },
     { "name": "Luxury Tax", "type": "tax", "position": 38, "amount": 100 },
@@ -201,13 +201,13 @@ function showRules() {
 
 Campus Property Categories:
 • Brown: Historic buildings (Old Library, Main Heritage)
-• Light Blue: Academic complexes (NLHC, DLHC, CLT)
-• Pink: Engineering buildings (Central Research, Science Block)
-• Orange: Department buildings (Computer Science, Petroleum)
-• Red: Student hostels (Jasper, Sapphire, New Rosaline)
-• Yellow: Sports facilities (Sports Complex, Swimming Pool, SAC)
-• Green: Library & research (New Central Library, Centre of Excellence)
-• Blue: Premium facilities (Seismological Observatory, Shooting Range)
+• Light Blue: Academic complexes (NLHC, NAC)
+• Pink: Engineering buildings (Central Research)
+• Orange: Department buildings (Computer Science, Petroleum, etc.)
+• Red: Student hostels (Jasper, Sapphire, New Rosaline, etc.)
+• Yellow: Sports facilities (Sports Complex, Swimming Pool)
+• Green: Library & research (Central Library)
+• Blue: Facilities (RD, OAT, Penman, SAC, EDC, Shooting Range)
 
 Transport: Bus Stop, Cycle Stand, Auto Stand, Metro Station
 Utilities: Wi-Fi Network, Power Grid
