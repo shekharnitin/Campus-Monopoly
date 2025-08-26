@@ -270,7 +270,7 @@ function handleGameJoined(data) {
     gameState.gamePhase = 'waiting';
 
     showStatus(`Joined game ${data.gameCode} successfully!`, 'success');
-    showScreen('hostDashboard'); // Show waiting screen
+    showScreen('playerWaiting'); // Show waiting screen
 }
 
 function handlePlayerJoined(data) {
