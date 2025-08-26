@@ -19,7 +19,7 @@ const campusBuildings = [
     { "name": "Community Chest", "type": "community_chest", "position": 2 },
     { "name": "Heritage Building", "type": "property", "position": 3, "price": 80, "color": "brown", "rent": [4, 20, 60, 180, 320, 450] },
     { "name": "Income Tax", "type": "tax", "position": 4, "amount": 200 },
-    { "name": "Bus Stop", "type": "transport", "position": 5, "price": 200 },
+    { "name": "RD", "type": "property", "position": 5, "price": 200 },
     { "name": "NLHC", "type": "property", "position": 6, "price": 100, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
     { "name": "Chance", "type": "chance", "position": 7 },
     { "name": "OAT", "type": "property", "position": 8, "price": 120, "color": "light_blue", "rent": [8, 40, 100, 300, 450, 600] },
