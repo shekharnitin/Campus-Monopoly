@@ -253,13 +253,6 @@ io.on('connection', (socket) => {
 
             socket.join(game.code);
             players.set(socket.id, { gameCode: game.code, playerId: hostPlayer.id, isHost: true });
-            if (hostPlayer) {
-                players.set(socket.id, {
-                    gameCode: game.code,
-                    playerId: hostPlayer.id,
-                    isHost: true
-                });
-            }
 
 
             socket.emit('gameCreated', {
@@ -409,9 +402,13 @@ io.on('connection', (socket) => {
 
     // Validation checks
     if (!property || !['property', 'transport', 'utility'].includes(property.type)) {
-        socket.emit('error', { message: 'Cannot buy this space' });
-        return;
-    }
+    socket.emit('error', { 
+        message: property.type === 'start' ? 'Cannot buy the Main Gate!' :
+                property.type === 'tax' ? 'Cannot buy tax spaces!' :
+                'Cannot buy this space' 
+    });
+    return;
+}
 
     if (property.owner) {
         socket.emit('error', { message: 'Property already owned' });

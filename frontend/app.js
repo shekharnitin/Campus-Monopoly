@@ -150,6 +150,12 @@ function rollDice() {
         }, 1000);
         
         socket.emit('rollDice');
+    } else {
+        // Demo mode fallback
+        const dice1 = Math.floor(Math.random() * 6) + 1;
+        const dice2 = Math.floor(Math.random() * 6) + 1;
+        updateDiceDisplay(dice1, dice2);
+        showStatus(`Rolled ${dice1} + ${dice2} = ${dice1 + dice2}`, 'info');
     }
 }
 
@@ -245,17 +251,7 @@ function copyGameCode() {
     });
 }
 
-function rollDice() {
-    if (socket && socket.connected) {
-        socket.emit('rollDice');
-    } else {
-        // Demo mode
-        const dice1 = Math.floor(Math.random() * 6) + 1;
-        const dice2 = Math.floor(Math.random() * 6) + 1;
-        updateDiceDisplay(dice1, dice2);
-        showStatus(`Rolled ${dice1} + ${dice2} = ${dice1 + dice2}`, 'info');
-    }
-}
+
 
 function buyProperty() {
     if (socket && socket.connected) {
@@ -298,6 +294,8 @@ function handleGameJoined(data) {
     gameState.gameCode = data.gameCode;
     gameState.currentPlayer = data.player;
     gameState.gamePhase = 'waiting';
+
+    document.getElementById('waitingGameCode').textContent = data.gameCode;
 
     showStatus(`Joined game ${data.gameCode} successfully!`, 'success');
     showScreen('playerWaiting'); // Show waiting screen
@@ -430,6 +428,8 @@ function createBoard() {
 
         space.style.left = `${x}%`;
         space.style.top = `${y}%`;
+        space.style.width = '80px';  
+        space.style.height = '60px';
 
         boardSpaces.appendChild(space);
     });
