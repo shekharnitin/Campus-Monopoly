@@ -364,13 +364,13 @@ body {
 }
 
 .board-space.highlight {
-  animation: highlight 2s ease-in-out;
+  animation: highlight 500ms ease-in-out;
   z-index: 15;
 }
 
 @keyframes highlight {
   0%, 100% { background-color: white; }
-  50% { background-color: #fef3cd; box-shadow: 0 0 20px rgba(255, 193, 7, 0.6); }
+  50% { background-color: #19098c; box-shadow: 0 0 20px rgba(255, 193, 7, 0.6); }
 }
 
 .space-name {
