@@ -289,14 +289,14 @@ function handleGameCreated(data) {
 
 function handleGameJoined(data) {
     gameState.isHost = false;
-    gameState.gameCode = data.gameCode;
+    gameState.gameCode = data.game.code;
     gameState.currentPlayer = data.player;
     gameState.gamePhase = 'waiting';
     gameState.players = data.game.players;
 
-    document.getElementById('waitingGameCode').textContent = data.gameCode;
+    document.getElementById('waitingGameCode').textContent = data.game.code;
 
-    showStatus(`Joined game ${data.gameCode} successfully!`, 'success');
+    showStatus(`Joined game ${data.game.code} successfully!`, 'success');
     showScreen('playerWaiting');
 }
 
