@@ -92,6 +92,25 @@
         <button onclick="closeCardModal()">Continue</button>
     </div>
 </div>
+<!-- Add this inside your game controls section -->
+<div id="jailOptions" class="jail-options" style="display: none;">
+    <div class="jail-info">
+        <h4>🏫 In Detention</h4>
+        <p>You can:</p>
+        <div class="jail-actions">
+            <button id="payJailFineBtn" class="btn btn--warning btn--small" onclick="payJailFine()">
+                Pay ₹50 Fine
+            </button>
+            <button id="useJailCardBtn" class="btn btn--success btn--small" onclick="useJailCard()">
+                Use "Get Out Free" Card
+            </button>
+            <button id="rollForDoublesBtn" class="btn btn--primary btn--small" onclick="rollDice()">
+                Roll for Doubles
+            </button>
+        </div>
+    </div>
+</div>
+
 
 
     <!-- Game Board -->

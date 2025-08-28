@@ -96,6 +96,9 @@ function setupSocketListeners() {
     socket.on('playerLeft', handlePlayerLeft);
     socket.on('taxPaid', handleTaxPaid);
     socket.on('cardDrawn', handleCardDrawn);
+    socket.on('playerSentToJail', handlePlayerSentToJail);
+    socket.on('playerLeftJail', handlePlayerLeftJail);
+    socket.on('jailTurnFailed', handleJailTurnFailed);
 }
 
 function initializeUI() {
@@ -332,8 +335,14 @@ function handleDiceRolled(data) {
     // Animate player movement
     animatePlayerMovement(data.player, data.newPosition);
 
-    // Show property action buttons if landed on purchasable property
+    // Check if player is just visiting jail
     const property = data.landedProperty;
+    if (property.type === 'jail' && !data.player.inJail) {
+        showStatus('Just Visiting Detention - no penalty!', 'info');
+    }
+
+    // Show property action buttons if landed on purchasable property
+    
     if (['property', 'transport', 'utility'].includes(property.type) && !property.owner) {
         document.getElementById('buyPropertyBtn').style.display = 'inline-block';
     }
@@ -438,6 +447,81 @@ function handlePlayerLeft(data) {
         showStatus(`Player left the game`, 'info');
     }
 }
+
+function handlePlayerSentToJail(data) {
+    addToGameLog(`${data.player.name} was sent to Detention!`);
+    
+    // Update game state
+    gameState.players = data.game.players;
+    updatePlayerInfo();
+    updateSidebar();
+    
+    // Show jail options if it's current player
+    if (data.player.socketId === socket.id) {
+        showJailOptions();
+    }
+}
+
+function handlePlayerLeftJail(data) {
+    let message = `${data.player.name} left Detention`;
+    
+    switch (data.method) {
+        case 'doubles':
+            message += ' by rolling doubles!';
+            break;
+        case 'fine':
+            message += ` by paying ₹${data.amount} fine!`;
+            break;
+        case 'card':
+            message += ' using "Get Out of Detention Free" card!';
+            break;
+    }
+    
+    addToGameLog(message);
+    
+    // Update game state
+    gameState.players = data.game.players;
+    updatePlayerInfo();
+    updateSidebar();
+    
+    hideJailOptions();
+}
+
+function handleJailTurnFailed(data) {
+    addToGameLog(`${data.player.name} failed to roll doubles. ${data.turnsRemaining} turns remaining in Detention.`);
+    
+    // Update game state
+    gameState.players = data.game.players;
+    updatePlayerInfo();
+    updateSidebar();
+}
+
+function showJailOptions() {
+    const jailOptions = document.getElementById('jailOptions');
+    if (jailOptions) {
+        jailOptions.style.display = 'block';
+    }
+}
+
+function hideJailOptions() {
+    const jailOptions = document.getElementById('jailOptions');
+    if (jailOptions) {
+        jailOptions.style.display = 'none';
+    }
+}
+
+function payJailFine() {
+    if (socket && socket.connected) {
+        socket.emit('payJailFine');
+    }
+}
+
+function useJailCard() {
+    if (socket && socket.connected) {
+        socket.emit('useJailCard');
+    }
+}
+
 
 // UI update functions
 function updatePlayersList(players) {
@@ -689,6 +773,18 @@ function updatePlayerInfo() {
     if (gameState.currentPlayer) {
         nameEl.textContent = `${gameState.currentPlayer.token} ${gameState.currentPlayer.name}`;
         moneyEl.textContent = `₹${gameState.currentPlayer.money}`;
+    }
+     const currentPlayer = gameState.currentPlayer;
+    if (currentPlayer && currentPlayer.inJail) {
+        showJailOptions();
+        
+        // Update UI to show jail status
+        const playerStatus = document.getElementById('playerStatus');
+        if (playerStatus) {
+            playerStatus.innerHTML = `🏫 In Detention (Turn ${currentPlayer.jailTurns}/3)`;
+        }
+    } else {
+        hideJailOptions();
     }
 }
 

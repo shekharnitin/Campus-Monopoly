@@ -32,7 +32,7 @@ const campusBuildings = [
     { "name": "Community Chest", "type": "community_chest", "position": 2 },
     { "name": "Heritage Building", "type": "property", "position": 3, "price": 80, "color": "brown", "rent": [4, 20, 60, 180, 320, 450] },
     { "name": "Income Tax", "type": "tax", "position": 4, "amount": 200 },
-    { "name": "RD", "type": "property", "position": 5, "price": 200, "color": "blue", "rent": [8, 40, 100, 300, 450, 600]},
+    { "name": "RD", "type": "property", "position": 5, "price": 200, "color": "blue", "rent": [8, 40, 100, 300, 450, 600] },
     { "name": "NLHC", "type": "property", "position": 6, "price": 100, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
     { "name": "Chance", "type": "chance", "position": 7 },
     { "name": "OAT", "type": "property", "position": 8, "price": 120, "color": "blue", "rent": [8, 40, 100, 300, 450, 600] },
@@ -204,24 +204,24 @@ function movePlayer(game, playerId, steps) {
     player.position = (player.position + steps) % 40;
 
     // Collect salary if passed START
-   if (oldPosition + steps >= 40) {
-    player.money += gameConfig.salaryAmount;
-    game.gameLog.push(`${player.name} passed Main Gate and collected ₹${gameConfig.salaryAmount}`);
-}
+    if (oldPosition + steps >= 40) {
+        player.money += gameConfig.salaryAmount;
+        game.gameLog.push(`${player.name} passed Main Gate and collected ₹${gameConfig.salaryAmount}`);
+    }
 
     return true;
 }
 
-function calculateRent(property, game, lastDiceRoll=[1,1]) {
+function calculateRent(property, game, lastDiceRoll = [1, 1]) {
     if (property.type === 'transport') {
-        const ownedTransports = game.board.filter(p => 
+        const ownedTransports = game.board.filter(p =>
             p.type === 'transport' && p.owner === property.owner
         ).length;
         return 25 * Math.pow(2, ownedTransports - 1);
     }
 
     if (property.type === 'utility') {
-        const ownedUtilities = game.board.filter(p => 
+        const ownedUtilities = game.board.filter(p =>
             p.type === 'utility' && p.owner === property.owner
         ).length;
         const multiplier = ownedUtilities === 1 ? 4 : 10;
@@ -239,9 +239,9 @@ function drawCard(game, cardType) {
     if (!game.cardDecks) {
         game.cardDecks = initializeCardDecks();
     }
-    
+
     let card, deck, index;
-    
+
     if (cardType === 'chance') {
         deck = game.cardDecks.chance;
         index = game.cardDecks.chanceIndex;
@@ -251,13 +251,13 @@ function drawCard(game, cardType) {
         index = game.cardDecks.communityIndex;
         game.cardDecks.communityIndex = (index + 1) % deck.length;
     }
-    
+
     return deck[index];
 }
 
 function executeCard(game, player, card, deckType) {
     let message = card.message;
-    
+
     switch (card.type) {
         case 'money':
             player.money += card.amount;
@@ -266,7 +266,7 @@ function executeCard(game, player, card, deckType) {
                 message += ` ${player.name} is bankrupt!`;
             }
             break;
-            
+
         case 'move':
             const oldPosition = player.position;
             player.position = card.position;
@@ -275,20 +275,26 @@ function executeCard(game, player, card, deckType) {
                 message += ` Collected ₹${gameConfig.salaryAmount} for passing Main Gate!`;
             }
             break;
-            
+
         case 'jail':
             player.position = 10;
             player.inJail = true;
             player.jailTurns = 0;
+            player.doublesCount = 0;
+            game.gameLog.push(`${player.name} was sent to Detention by card!`);
+            io.to(game.code).emit('playerSentToJail', {
+                player: player,
+                game: game
+            });
             break;
-            
+
         case 'payall':
             const activePlayers = game.players.filter(p => !p.bankrupt && p.id !== player.id);
             const totalPay = card.amount * activePlayers.length;
             player.money -= totalPay;
             activePlayers.forEach(p => p.money += card.amount);
             break;
-            
+
         case 'collectall':
             const otherPlayers = game.players.filter(p => !p.bankrupt && p.id !== player.id);
             otherPlayers.forEach(p => {
@@ -296,19 +302,19 @@ function executeCard(game, player, card, deckType) {
                 player.money += card.amount;
             });
             break;
-            
+
         case 'repair':
             const repairCost = (player.houses || 0) * card.house + (player.hotels || 0) * card.hotel;
             player.money -= repairCost;
             message += ` Total cost: ₹${repairCost}`;
             break;
-            
+
         case 'getoutofjail':
             if (!player.getOutOfJailCards) player.getOutOfJailCards = 0;
             player.getOutOfJailCards++;
             break;
     }
-    
+
     return {
         message: message,
         deckType: deckType
@@ -487,6 +493,55 @@ io.on('connection', (socket) => {
 
         const dice = rollDice();
         const totalRoll = dice[0] + dice[1];
+        const isDoubles = dice[0] === dice[1];
+
+        // Handle jail turns
+        if (currentPlayer.inJail) {
+            const playerMoved = handleJailTurn(game, currentPlayer, dice);
+
+            io.to(game.code).emit('diceRolled', {
+                player: currentPlayer,
+                dice: dice,
+                totalRoll: totalRoll,
+                isDoubles: isDoubles,
+                inJail: true,
+                newPosition: currentPlayer.position,
+                landedProperty: game.board[currentPlayer.position],
+                game: game
+            });
+
+            if (playerMoved) {
+                handlePropertyLanding(game, currentPlayer, game.board[currentPlayer.position], dice);
+            }
+            return;
+        }
+
+        // Track consecutive doubles
+        if (!currentPlayer.doublesCount) currentPlayer.doublesCount = 0;
+
+        if (isDoubles) {
+            currentPlayer.doublesCount++;
+
+            // 3 doubles in a row = go to jail
+            if (currentPlayer.doublesCount >= 3) {
+                game.gameLog.push(`${currentPlayer.name} rolled 3 doubles in a row!`);
+                sendPlayerToJail(game, currentPlayer);
+
+                io.to(game.code).emit('diceRolled', {
+                    player: currentPlayer,
+                    dice: dice,
+                    totalRoll: totalRoll,
+                    isDoubles: isDoubles,
+                    tripledDoubles: true,
+                    newPosition: currentPlayer.position,
+                    landedProperty: game.board[currentPlayer.position],
+                    game: game
+                });
+                return;
+            }
+        } else {
+            currentPlayer.doublesCount = 0; // Reset if not doubles
+        }
 
         movePlayer(game, currentPlayer.id, totalRoll);
 
@@ -497,6 +552,7 @@ io.on('connection', (socket) => {
             player: currentPlayer,
             dice: dice,
             totalRoll: totalRoll,
+            isDoubles: isDoubles,
             newPosition: currentPlayer.position,
             landedProperty: landedProperty,
             game: game
@@ -516,48 +572,48 @@ io.on('connection', (socket) => {
         const player = game.players.find(p => p.socketId === socket.id);
 
         // Check if it's player's turn
-    const currentPlayer = game.players[game.currentPlayerIndex];
-    if (currentPlayer.socketId !== socket.id) {
-        socket.emit('error', { message: 'Not your turn' });
-        return;
-    }
+        const currentPlayer = game.players[game.currentPlayerIndex];
+        if (currentPlayer.socketId !== socket.id) {
+            socket.emit('error', { message: 'Not your turn' });
+            return;
+        }
 
-    const property = game.board[player.position];
+        const property = game.board[player.position];
 
-    // Validation checks
-    if (!property || !['property', 'transport', 'utility'].includes(property.type)) {
-    socket.emit('error', { 
-        message: property.type === 'start' ? 'Cannot buy the Main Gate!' :
-                property.type === 'tax' ? 'Cannot buy tax spaces!' :
-                'Cannot buy this space' 
-    });
-    return;
-}
+        // Validation checks
+        if (!property || !['property', 'transport', 'utility'].includes(property.type)) {
+            socket.emit('error', {
+                message: property.type === 'start' ? 'Cannot buy the Main Gate!' :
+                    property.type === 'tax' ? 'Cannot buy tax spaces!' :
+                        'Cannot buy this space'
+            });
+            return;
+        }
 
-    if (property.owner) {
-        socket.emit('error', { message: 'Property already owned' });
-        return;
-    }
+        if (property.owner) {
+            socket.emit('error', { message: 'Property already owned' });
+            return;
+        }
 
-    if (player.money < property.price) {
-        socket.emit('error', { message: 'Insufficient funds' });
-        return;
-    }
+        if (player.money < property.price) {
+            socket.emit('error', { message: 'Insufficient funds' });
+            return;
+        }
 
-    // Execute purchase
-    player.money -= property.price;
-    property.owner = player.id;
-    player.properties.push(property.position);
+        // Execute purchase
+        player.money -= property.price;
+        property.owner = player.id;
+        player.properties.push(property.position);
 
-    game.gameLog.push(`${player.name} bought ${property.name} for ₹${property.price}`);
+        game.gameLog.push(`${player.name} bought ${property.name} for ₹${property.price}`);
 
-    io.to(game.code).emit('propertyPurchased', {
-        player: player,
-        property: property,
-        game: game
-    });
+        io.to(game.code).emit('propertyPurchased', {
+            player: player,
+            property: property,
+            game: game
+        });
 
-    // Don't auto-end turn - let player choose
+        // Don't auto-end turn - let player choose
 
     });
 
@@ -570,6 +626,31 @@ io.on('connection', (socket) => {
 
         endPlayerTurn(game);
     });
+
+    socket.on('payJailFine', (data) => {
+        const playerInfo = players.get(socket.id);
+        if (!playerInfo) return;
+
+        const game = games.get(playerInfo.gameCode);
+        const player = game.players.find(p => p.socketId === socket.id);
+
+        if (player.inJail) {
+            payJailFine(game, player);
+        }
+    });
+
+    socket.on('useJailCard', (data) => {
+        const playerInfo = players.get(socket.id);
+        if (!playerInfo) return;
+
+        const game = games.get(playerInfo.gameCode);
+        const player = game.players.find(p => p.socketId === socket.id);
+
+        if (player.inJail) {
+            useGetOutOfJailCard(game, player);
+        }
+    });
+
 
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);
@@ -603,13 +684,22 @@ io.on('connection', (socket) => {
 });
 
 function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
+    if (property.type === 'jail' && !player.inJail) {
+        game.gameLog.push(`${player.name} is Just Visiting Detention - no penalty!`);
+        return; // Nothing else happens
+    }
+    // Handle "Go to Jail" space
+    if (property.type === 'go_to_jail') {
+        sendPlayerToJail(game, player);
+        return;
+    }
     if (property.type === 'chance' || property.type === 'community_chest') {
         const cardType = property.type === 'chance' ? 'chance' : 'community_chest';
         const card = drawCard(game, cardType);
         const result = executeCard(game, player, card, cardType);
-        
+
         game.gameLog.push(`${player.name} drew: ${result.message}`);
-        
+
         io.to(game.code).emit('cardDrawn', {
             player: player,
             card: card,
@@ -617,7 +707,7 @@ function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
             deckType: result.deckType,
             game: game
         });
-        
+
         // Handle movement cards
         if (card.type === 'move') {
             const newProperty = game.board[player.position];
@@ -626,17 +716,17 @@ function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
                 handlePropertyLanding(game, player, newProperty, lastDiceRoll);
             }, 1000);
         }
-        
+
         return;
     }
     // Handle tax spaces
     if (property.type === 'tax') {
         const taxAmount = property.amount;
-        
+
         if (player.money >= taxAmount) {
             player.money -= taxAmount;
             game.gameLog.push(`${player.name} paid ₹${taxAmount} ${property.name}`);
-            
+
             io.to(game.code).emit('taxPaid', {
                 player: player,
                 amount: taxAmount,
@@ -647,7 +737,7 @@ function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
             // Player can't afford tax - bankruptcy
             game.gameLog.push(`${player.name} cannot afford ₹${taxAmount} ${property.name} and is bankrupt!`);
             player.bankrupt = true;
-            
+
             io.to(game.code).emit('playerBankrupt', {
                 player: player,
                 game: game
@@ -691,6 +781,115 @@ function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
         });
     }
 }
+
+function sendPlayerToJail(game, player) {
+    player.position = 10; // Jail position
+    player.inJail = true;
+    player.jailTurns = 0;
+    player.doublesCount = 0; // Reset doubles count
+
+    game.gameLog.push(`${player.name} was sent to Detention!`);
+
+    io.to(game.code).emit('playerSentToJail', {
+        player: player,
+        game: game
+    });
+}
+
+function handleJailTurn(game, player, dice) {
+    const isDoubles = dice[0] === dice[1];
+
+    if (isDoubles) {
+        // Player rolled doubles - gets out of jail
+        player.inJail = false;
+        player.jailTurns = 0;
+
+        // Move player normally
+        const totalRoll = dice[0] + dice[1];
+        movePlayer(game, player.id, totalRoll);
+
+        game.gameLog.push(`${player.name} rolled doubles and got out of Detention!`);
+
+        io.to(game.code).emit('playerLeftJail', {
+            player: player,
+            method: 'doubles',
+            newPosition: player.position,
+            game: game
+        });
+
+        return true; // Player moved
+
+    } else {
+        // Increment jail turns
+        player.jailTurns++;
+
+        if (player.jailTurns >= 3) {
+            // Must pay fine after 3 turns
+            payJailFine(game, player);
+            return false; // Turn ends
+        } else {
+            game.gameLog.push(`${player.name} failed to roll doubles. Detention turn ${player.jailTurns}/3`);
+
+            io.to(game.code).emit('jailTurnFailed', {
+                player: player,
+                turnsRemaining: 3 - player.jailTurns,
+                game: game
+            });
+
+            return false; // Turn ends
+        }
+    }
+}
+
+function payJailFine(game, player) {
+    const fine = 50;
+
+    if (player.money >= fine) {
+        player.money -= fine;
+        player.inJail = false;
+        player.jailTurns = 0;
+
+        game.gameLog.push(`${player.name} paid ₹${fine} fine and left Detention`);
+
+        io.to(game.code).emit('playerLeftJail', {
+            player: player,
+            method: 'fine',
+            amount: fine,
+            game: game
+        });
+
+    } else {
+        // Player can't afford fine - bankruptcy
+        player.bankrupt = true;
+        game.gameLog.push(`${player.name} cannot afford Detention fine and is bankrupt!`);
+
+        io.to(game.code).emit('playerBankrupt', {
+            player: player,
+            reason: 'jail_fine',
+            game: game
+        });
+    }
+}
+
+function useGetOutOfJailCard(game, player) {
+    if (player.getOutOfJailCards && player.getOutOfJailCards > 0) {
+        player.getOutOfJailCards--;
+        player.inJail = false;
+        player.jailTurns = 0;
+
+        game.gameLog.push(`${player.name} used "Get Out of Detention Free" card`);
+
+        io.to(game.code).emit('playerLeftJail', {
+            player: player,
+            method: 'card',
+            game: game
+        });
+
+        return true;
+    }
+    return false;
+}
+
 
 function endPlayerTurn(game) {
     do {
