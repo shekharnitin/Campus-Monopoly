@@ -131,6 +131,7 @@ function updateUI() {
     updatePlayerInfo();
     updateGameBoard();
     updatePlayersList(gameState.players || []);
+    updateSidebar();
 }
 
 function rollDice() {
@@ -315,6 +316,7 @@ function handleGameStarted(data) {
     updateGameBoard();
     updatePlayerInfo();
     updatePlayerPieces();
+    updateSidebar();
 }
 
 function handleDiceRolled(data) {
@@ -335,6 +337,7 @@ function handleDiceRolled(data) {
     }
 
     document.getElementById('endTurnBtn').style.display = 'inline-block';
+    updateSidebar();
 }
 
 function handlePropertyPurchased(data) {
@@ -346,6 +349,7 @@ function handlePropertyPurchased(data) {
     
     updatePlayerInfo();
     updateGameBoard();
+    updateSidebar();
     document.getElementById('buyPropertyBtn').style.display = 'none';
 }
 
@@ -355,12 +359,14 @@ function handleRentPaid(data) {
     // Update game state
     gameState.players = data.game.players;
     updatePlayerInfo();
+    updateSidebar();
 }
 
 function handleTurnEnded(data) {
     gameState.currentPlayer = data.nextPlayer;
     gameState.players = data.game.players;
     updatePlayerInfo();
+    updateSidebar();
 
     // Hide action buttons
     document.getElementById('buyPropertyBtn').style.display = 'none';
@@ -517,7 +523,7 @@ function showPropertyInfo(event, building, position) {
     
     // Position the card above the property space
     const rect = event.target.getBoundingClientRect();
-    const cardRect = infoCard.getBoundingClientRect();
+    
     
     // Calculate position to center the card above the property
     let left = rect.left + (rect.width / 2) - (200 / 2); // 200px is approximate card width
@@ -525,7 +531,7 @@ function showPropertyInfo(event, building, position) {
     
     // Ensure the card stays within viewport
     const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    
     
     // Adjust horizontal position if card would go off screen
     if (left < 10) left = 10;
@@ -533,7 +539,7 @@ function showPropertyInfo(event, building, position) {
     
     // If card would go above viewport, show it below the property instead
     if (top < 10) {
-        top = rect.bottom + 10;
+        top = 10;
     }
     
     infoCard.style.left = `${left}px`;
@@ -656,6 +662,64 @@ function addToGameLog(message) {
             gameLog.removeChild(gameLog.firstChild);
         }
     }
+}
+
+function updateSidebar() {
+    updatePlayerProperties();
+    updateAllPlayers();
+}
+
+function updatePlayerProperties() {
+    const playerPropertiesEl = document.getElementById('playerProperties');
+    if (!playerPropertiesEl || !gameState.currentPlayer || !gameState.board) return;
+
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer.id);
+    if (!currentPlayer) return;
+
+    const ownedProperties = gameState.board.filter(space => 
+        space.owner === currentPlayer.id && 
+        ['property', 'transport', 'utility'].includes(space.type)
+    );
+
+    if (ownedProperties.length === 0) {
+        playerPropertiesEl.innerHTML = '<div class="text-muted">No properties owned</div>';
+        return;
+    }
+
+    playerPropertiesEl.innerHTML = ownedProperties.map(property => {
+        const building = campusBuildings[property.position];
+        return `
+            <div class="property-item ${building.color || building.type}">
+                <div class="property-name">${building.name}</div>
+                <div class="property-value">₹${building.price}</div>
+                ${property.houses > 0 ? `<div class="property-houses">${property.houses} houses</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function updateAllPlayers() {
+    const allPlayersEl = document.getElementById('allPlayers');
+    if (!allPlayersEl || !gameState.players) return;
+
+    allPlayersEl.innerHTML = gameState.players.map(player => {
+        const isCurrentPlayer = gameState.currentPlayer && player.id === gameState.currentPlayer.id;
+        const propertyCount = gameState.board ? 
+            gameState.board.filter(space => space.owner === player.id).length : 0;
+
+        return `
+            <div class="player-summary ${isCurrentPlayer ? 'current-player' : ''} ${player.bankrupt ? 'bankrupt' : ''}">
+                <div class="player-info">
+                    <span class="player-token">${player.token}</span>
+                    <span class="player-name">${player.name}</span>
+                </div>
+                <div class="player-stats">
+                    <div class="player-money">₹${player.money}</div>
+                    <div class="player-properties">${propertyCount} properties</div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function showStatus(message, type = 'info') {

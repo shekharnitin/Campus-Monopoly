@@ -370,7 +370,7 @@ body {
 
 @keyframes highlight {
   0%, 100% { background-color: white; }
-  50% { background-color: #19098c; box-shadow: 0 0 20px rgba(255, 193, 7, 0.6); }
+  50% { background-color: #1a097d; box-shadow: 0 0 20px rgba(255, 193, 7, 0.6); }
 }
 
 .space-name {
@@ -491,6 +491,104 @@ body {
   color: var(--color-text);
 }
 
+/* Sidebar Content Styles */
+.text-muted {
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.property-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-left: 4px solid #ccc;
+}
+
+.property-item.brown { border-left-color: #8b4513; }
+.property-item.light_blue { border-left-color: #87ceeb; }
+.property-item.pink { border-left-color: #ffc0cb; }
+.property-item.orange { border-left-color: #ffa500; }
+.property-item.red { border-left-color: #ff0000; }
+.property-item.yellow { border-left-color: #ffff00; }
+.property-item.green { border-left-color: #008000; }
+.property-item.blue { border-left-color: #0000ff; }
+.property-item.transport { border-left-color: #333; }
+.property-item.utility { border-left-color: #666; }
+
+.property-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.property-value {
+  font-size: 0.8rem;
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.property-houses {
+  font-size: 0.7rem;
+  color: var(--color-warning);
+  margin-top: 0.25rem;
+}
+
+.player-summary {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.player-summary.current-player {
+  border-left: 4px solid var(--color-primary);
+  background: #f0f9ff;
+}
+
+.player-summary.bankrupt {
+  opacity: 0.6;
+  background: #fef2f2;
+  border-left-color: var(--color-danger);
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.player-token {
+  font-size: 1.2rem;
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.player-stats {
+  text-align: right;
+}
+
+.player-money {
+  font-weight: 600;
+  color: var(--color-success);
+  font-size: 0.9rem;
+}
+
+.player-properties {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
 .game-log {
   max-height: 100px;
   overflow-y: auto;
@@ -563,5 +661,14 @@ body {
     width: 16px;
     height: 16px;
     font-size: 10px;
+  }
+
+  .sidebar {
+    order: -1;
+  }
+
+  .properties-panel,
+  .players-panel {
+    padding: 1rem;
   }
 }
