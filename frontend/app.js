@@ -95,6 +95,7 @@ function setupSocketListeners() {
     socket.on('gameEnded', handleGameEnded);
     socket.on('playerLeft', handlePlayerLeft);
     socket.on('taxPaid', handleTaxPaid);
+    socket.on('cardDrawn', handleCardDrawn);
 }
 
 function initializeUI() {
@@ -371,6 +372,44 @@ function handleTaxPaid(data) {
     updatePlayerInfo();
     updateSidebar();
 }
+
+function handleCardDrawn(data) {
+    addToGameLog(data.result);
+    
+    // Show card modal/popup
+    showCardModal(data.card, data.deckType);
+    
+    // Update game state
+    gameState.players = data.game.players;
+    gameState.currentPlayer = data.player;
+    updatePlayerInfo();
+    updateSidebar();
+}
+
+function showCardModal(card, deckType) {
+    const modal = document.getElementById('cardModal');
+    const cardType = document.getElementById('cardType');
+    const cardMessage = document.getElementById('cardMessage');
+    
+    // Set card type and message
+    cardType.textContent = deckType === 'chance' ? 'Chance Card' : 'Community Chest Card';
+    cardMessage.textContent = card.message;
+    
+    // Show modal
+    modal.style.display = 'block';
+    
+    // Close modal when clicking outside
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeCardModal();
+        }
+    };
+}
+
+function closeCardModal() {
+    document.getElementById('cardModal').style.display = 'none';
+}
+
 
 function handleTurnEnded(data) {
     gameState.currentPlayer = data.nextPlayer;

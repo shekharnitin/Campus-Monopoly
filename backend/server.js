@@ -69,6 +69,31 @@ const campusBuildings = [
     { "name": "Shooting Range", "type": "property", "position": 39, "price": 400, "color": "blue", "rent": [50, 200, 600, 1400, 1700, 2000] }
 ];
 
+const chanceCards = [
+    { type: 'money', amount: 200, message: 'Scholarship Awarded! Collect ₹200' },
+    { type: 'money', amount: 150, message: 'Research Grant Approved! Collect ₹150' },
+    { type: 'money', amount: -50, message: 'Late Assignment Penalty! Pay ₹50' },
+    { type: 'money', amount: -100, message: 'Hostel Damage Fine! Pay ₹100' },
+    { type: 'move', position: 0, message: 'Advance to Main Gate! Collect ₹200' },
+    { type: 'move', position: 31, message: 'Go to Central Library!' },
+    { type: 'jail', message: 'Go to Detention! Move directly to Jail' },
+    { type: 'payall', amount: 25, message: 'Student Council Election! Pay ₹25 to each player' },
+    { type: 'collectall', amount: 25, message: 'Group Study Session! Collect ₹25 from each player' },
+    { type: 'repair', house: 40, hotel: 115, message: 'Property Tax! Pay ₹40 per house, ₹115 per hotel' },
+    { type: 'getoutofjail', message: 'Get Out of Detention Free! Keep this card' }
+];
+
+const communityChestCards = [
+    { type: 'money', amount: 100, message: 'Emergency Scholarship! Collect ₹100' },
+    { type: 'money', amount: 50, message: 'Birthday Money from Home! Collect ₹50' },
+    { type: 'money', amount: -50, message: 'Medical Center Bill! Pay ₹50' },
+    { type: 'money', amount: -100, message: 'Semester Fee Due! Pay ₹100' },
+    { type: 'money', amount: 125, message: 'Campus Competition Prize! Collect ₹125' },
+    { type: 'repair', house: 40, hotel: 100, message: 'Campus Maintenance! Pay ₹40 per house, ₹100 per hotel' },
+    { type: 'getoutofjail', message: 'Get Out of Detention Free! Keep this card' }
+];
+
+
 const gameConfig = {
     startingMoney: 1500,
     salaryAmount: 200,
@@ -148,6 +173,24 @@ function addPlayerToGame(gameCode, playerName, socketId) {
     return { player, game };
 }
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function initializeCardDecks() {
+    return {
+        chance: shuffleArray([...chanceCards]),
+        communityChest: shuffleArray([...communityChestCards]),
+        chanceIndex: 0,
+        communityIndex: 0
+    };
+}
+
+
 // Game logic functions
 function rollDice() {
     return [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1];
@@ -191,6 +234,87 @@ function calculateRent(property, game, lastDiceRoll=[1,1]) {
 
     return 0;
 }
+
+function drawCard(game, cardType) {
+    if (!game.cardDecks) {
+        game.cardDecks = initializeCardDecks();
+    }
+    
+    let card, deck, index;
+    
+    if (cardType === 'chance') {
+        deck = game.cardDecks.chance;
+        index = game.cardDecks.chanceIndex;
+        game.cardDecks.chanceIndex = (index + 1) % deck.length;
+    } else {
+        deck = game.cardDecks.communityChest;
+        index = game.cardDecks.communityIndex;
+        game.cardDecks.communityIndex = (index + 1) % deck.length;
+    }
+    
+    return deck[index];
+}
+
+function executeCard(game, player, card, deckType) {
+    let message = card.message;
+    
+    switch (card.type) {
+        case 'money':
+            player.money += card.amount;
+            if (card.amount < 0 && player.money < 0) {
+                player.bankrupt = true;
+                message += ` ${player.name} is bankrupt!`;
+            }
+            break;
+            
+        case 'move':
+            const oldPosition = player.position;
+            player.position = card.position;
+            if (card.position === 0 || (oldPosition > card.position)) {
+                player.money += gameConfig.salaryAmount;
+                message += ` Collected ₹${gameConfig.salaryAmount} for passing Main Gate!`;
+            }
+            break;
+            
+        case 'jail':
+            player.position = 10;
+            player.inJail = true;
+            player.jailTurns = 0;
+            break;
+            
+        case 'payall':
+            const activePlayers = game.players.filter(p => !p.bankrupt && p.id !== player.id);
+            const totalPay = card.amount * activePlayers.length;
+            player.money -= totalPay;
+            activePlayers.forEach(p => p.money += card.amount);
+            break;
+            
+        case 'collectall':
+            const otherPlayers = game.players.filter(p => !p.bankrupt && p.id !== player.id);
+            otherPlayers.forEach(p => {
+                p.money -= card.amount;
+                player.money += card.amount;
+            });
+            break;
+            
+        case 'repair':
+            const repairCost = (player.houses || 0) * card.house + (player.hotels || 0) * card.hotel;
+            player.money -= repairCost;
+            message += ` Total cost: ₹${repairCost}`;
+            break;
+            
+        case 'getoutofjail':
+            if (!player.getOutOfJailCards) player.getOutOfJailCards = 0;
+            player.getOutOfJailCards++;
+            break;
+    }
+    
+    return {
+        message: message,
+        deckType: deckType
+    };
+}
+
 
 // REST API Endpoints
 app.get('/', (req, res) => {
@@ -479,6 +603,32 @@ io.on('connection', (socket) => {
 });
 
 function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
+    if (property.type === 'chance' || property.type === 'community_chest') {
+        const cardType = property.type === 'chance' ? 'chance' : 'community_chest';
+        const card = drawCard(game, cardType);
+        const result = executeCard(game, player, card, cardType);
+        
+        game.gameLog.push(`${player.name} drew: ${result.message}`);
+        
+        io.to(game.code).emit('cardDrawn', {
+            player: player,
+            card: card,
+            result: result.message,
+            deckType: result.deckType,
+            game: game
+        });
+        
+        // Handle movement cards
+        if (card.type === 'move') {
+            const newProperty = game.board[player.position];
+            // Recursively handle landing on new property
+            setTimeout(() => {
+                handlePropertyLanding(game, player, newProperty, lastDiceRoll);
+            }, 1000);
+        }
+        
+        return;
+    }
     // Handle tax spaces
     if (property.type === 'tax') {
         const taxAmount = property.amount;
@@ -504,7 +654,7 @@ function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
             });
         }
     }
-    
+
     if (property.owner && property.owner !== player.id && !property.mortgaged) {
         const rent = calculateRent(property, game, lastDiceRoll);
         const owner = game.players.find(p => p.id === property.owner);
