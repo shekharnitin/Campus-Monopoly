@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IIT (ISM) Dhanbad Campus Monopoly</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Main Menu -->
+    <div id="mainMenu" class="screen">
+        <div class="main-menu-container">
+            <h1>IIT (ISM) Dhanbad<br>Campus Monopoly</h1>
+            <div class="menu-buttons">
+                <button class="btn btn--primary btn--lg" id="hostGameBtn">🎮 Host New Game</button>
+                <button class="btn btn--secondary btn--lg" id="joinGameBtn">👥 Join Game</button>
+                <button class="btn btn--outline btn--lg" id="viewRulesBtn">📋 View Rules</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Game Screen -->
+    <div id="joinGameScreen" class="screen hidden">
+        <div class="join-game-container">
+            <h2>Join Game</h2>
+            <div class="form-group">
+                <label class="form-label" for="gameCodeInput">Enter Game Code</label>
+                <input type="text" class="form-control" id="gameCodeInput" placeholder="Enter 6-digit code">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="playerNameInput">Your Name</label>
+                <input type="text" class="form-control" id="playerNameInput" placeholder="Enter your name">
+            </div>
+            <div class="menu-buttons">
+                <button class="btn btn--primary" id="joinGameSubmitBtn">Join Game</button>
+                <button class="btn btn--outline" id="backToMenuBtn">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Waiting Screen -->
+    <div id="playerWaiting" class="screen hidden">
+        <div class="waiting-container">
+            <h2>Joined Game Successfully!</h2>
+            <div class="game-info">
+                <p>Game Code: <strong id="waitingGameCode"></strong></p>
+                <p>Waiting for host to start the game...</p>
+            </div>
+            <div class="waiting-animation">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Host Dashboard -->
+    <div id="hostDashboard" class="screen hidden">
+        <div class="host-container">
+            <div class="host-header">
+                <h2>Host Dashboard</h2>
+                <div class="game-code-display">
+                    <span>Game Code: <strong id="hostGameCode"></strong></span>
+                    <button class="btn btn--small" id="copyCodeBtn">Copy</button>
+                </div>
+            </div>
+
+            <div class="host-content">
+                <div class="players-section">
+                    <h3>Players (<span id="playerCount">0</span>/8)</h3>
+                    <div id="playersList" class="players-list"></div>
+                </div>
+
+                <div class="game-controls">
+                    <button class="btn btn--success" id="startGameBtn" disabled>Start Game</button>
+                    <button class="btn btn--danger" id="endGameBtn">End Game</button>
+                </div>
+
+                <div class="game-status">
+                    <h3>Game Status</h3>
+                    <div id="gameStatus">Waiting for players...</div>
+                    <div id="currentPlayerStatus"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cardModal" class="card-modal">
+    <div class="card-modal-content">
+        <h3 id="cardType">Chance Card</h3>
+        <p id="cardMessage">Card message will appear here</p>
+        <button onclick="closeCardModal()">Continue</button>
+    </div>
+</div>
+
+
+    <!-- Game Board -->
+    <div id="gameBoard" class="screen hidden">
+        <div class="board-container">
+            <div class="game-header">
+                <div class="player-info">
+                    <span id="currentPlayerName"></span>
+                    <span id="currentPlayerMoney">₹1500</span>
+                </div>
+                <div class="game-actions">
+                    <button class="btn btn--primary" id="rollDiceBtn">🎲 Roll Dice</button>
+                    <button class="btn btn--success" id="buyPropertyBtn" style="display: none;">💰 Buy Property</button>
+                    <button class="btn btn--warning" id="sellPropertyBtn" style="display: none;">🏪 Sell
+                        Property</button>
+                    <button class="btn btn--outline" id="endTurnBtn" style="display: none;">⏭️ End Turn</button>
+                </div>
+            </div>
+
+            <div class="monopoly-board">
+                <div class="board-center">
+                    <h3>IIT (ISM) Dhanbad</h3>
+                    <div id="diceDisplay">
+                        <div class="dice" id="dice1">1</div>
+                        <div class="dice" id="dice2">1</div>
+                    </div>
+                    <div id="gameLog" class="game-log"></div>
+                </div>
+
+                <!-- Board spaces will be generated by JavaScript -->
+                <div id="boardSpaces" class="board-spaces"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="properties-panel">
+                    <h3>Your Properties</h3>
+                    <div id="playerProperties"></div>
+                </div>
+
+                <div class="players-panel">
+                    <h3>All Players</h3>
+                    <div id="allPlayers"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
