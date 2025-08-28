@@ -479,6 +479,32 @@ io.on('connection', (socket) => {
 });
 
 function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
+    // Handle tax spaces
+    if (property.type === 'tax') {
+        const taxAmount = property.amount;
+        
+        if (player.money >= taxAmount) {
+            player.money -= taxAmount;
+            game.gameLog.push(`${player.name} paid ₹${taxAmount} ${property.name}`);
+            
+            io.to(game.code).emit('taxPaid', {
+                player: player,
+                amount: taxAmount,
+                property: property,
+                game: game
+            });
+        } else {
+            // Player can't afford tax - bankruptcy
+            game.gameLog.push(`${player.name} cannot afford ₹${taxAmount} ${property.name} and is bankrupt!`);
+            player.bankrupt = true;
+            
+            io.to(game.code).emit('playerBankrupt', {
+                player: player,
+                game: game
+            });
+        }
+    }
+    
     if (property.owner && property.owner !== player.id && !property.mortgaged) {
         const rent = calculateRent(property, game, lastDiceRoll);
         const owner = game.players.find(p => p.id === property.owner);

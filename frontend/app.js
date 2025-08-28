@@ -94,6 +94,7 @@ function setupSocketListeners() {
     socket.on('turnEnded', handleTurnEnded);
     socket.on('gameEnded', handleGameEnded);
     socket.on('playerLeft', handlePlayerLeft);
+    socket.on('taxPaid', handleTaxPaid);
 }
 
 function initializeUI() {
@@ -355,6 +356,15 @@ function handlePropertyPurchased(data) {
 
 function handleRentPaid(data) {
     addToGameLog(`${data.payer.name} paid ₹${data.amount} rent to ${data.receiver.name}`);
+    
+    // Update game state
+    gameState.players = data.game.players;
+    updatePlayerInfo();
+    updateSidebar();
+}
+
+function handleTaxPaid(data) {
+    addToGameLog(`${data.player.name} paid ₹${data.amount} ${data.property.name}`);
     
     // Update game state
     gameState.players = data.game.players;
