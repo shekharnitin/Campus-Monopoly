@@ -48,7 +48,7 @@ const campusBuildings = [
     { "name": "Petroleum Engineering", "type": "property", "position": 18, "price": 200, "color": "orange", "rent": [16, 80, 220, 600, 800, 1000] },
     { "name": "Environmental Science", "type": "property", "position": 19, "price": 220, "color": "orange", "rent": [18, 90, 250, 700, 875, 1050] },
     { "name": "Free Parking", "type": "free_parking", "position": 20 },
-    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 120, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
+    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 220, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
     { "name": "Chance", "type": "chance", "position": 22 },
     { "name": "Sapphire Hostel", "type": "property", "position": 23, "price": 240, "color": "red", "rent": [20, 100, 300, 750, 925, 1100] },
     { "name": "New Rosaline Hostel", "type": "property", "position": 24, "price": 260, "color": "red", "rent": [22, 110, 330, 800, 975, 1150] },
@@ -169,7 +169,7 @@ function movePlayer(game, playerId, steps) {
     return true;
 }
 
-function calculateRent(property, game, lastDiceRoll = [1, 1]) {
+function calculateRent(property, game, lastDiceRoll=[1,1]) {
     if (property.type === 'transport') {
         const ownedTransports = game.board.filter(p => 
             p.type === 'transport' && p.owner === property.owner
@@ -378,7 +378,7 @@ io.on('connection', (socket) => {
             game: game
         });
 
-        handlePropertyLanding(game, currentPlayer, landedProperty);
+        handlePropertyLanding(game, currentPlayer, landedProperty, dice);
     });
 
     socket.on('buyProperty', (data) => {
@@ -478,9 +478,9 @@ io.on('connection', (socket) => {
     });
 });
 
-function handlePropertyLanding(game, player, property) {
+function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
     if (property.owner && property.owner !== player.id && !property.mortgaged) {
-        const rent = calculateRent(property, game);
+        const rent = calculateRent(property, game, lastDiceRoll);
         const owner = game.players.find(p => p.id === property.owner);
 
         if (player.money >= rent) {

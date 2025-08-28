@@ -35,7 +35,7 @@ const campusBuildings = [
     { "name": "Petroleum Engineering", "type": "property", "position": 18, "price": 200, "color": "orange", "rent": [16, 80, 220, 600, 800, 1000] },
     { "name": "Environmental Science", "type": "property", "position": 19, "price": 220, "color": "orange", "rent": [18, 90, 250, 700, 875, 1050] },
     { "name": "Free Parking", "type": "free_parking", "position": 20 },
-    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 120, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
+    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 220, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
     { "name": "Chance", "type": "chance", "position": 22 },
     { "name": "Sapphire Hostel", "type": "property", "position": 23, "price": 240, "color": "red", "rent": [20, 100, 300, 750, 925, 1100] },
     { "name": "New Rosaline Hostel", "type": "property", "position": 24, "price": 260, "color": "red", "rent": [22, 110, 330, 800, 975, 1150] },
@@ -527,7 +527,7 @@ function showPropertyInfo(event, building, position) {
     
     // Calculate position to center the card above the property
     let left = rect.left + (rect.width / 2) - (200 / 2); // 200px is approximate card width
-    let top = rect.top - 10; // Position above the property with 10px gap
+    let top = rect.top - 200; // Position above the property with 10px gap
     
     // Ensure the card stays within viewport
     const viewportWidth = window.innerWidth;
