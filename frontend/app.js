@@ -139,6 +139,7 @@ function updateUI() {
     updateGameBoard();
     updatePlayersList(gameState.players || []);
     updateSidebar();
+    updateJailCardCounter();
 }
 
 function rollDice() {
@@ -307,7 +308,7 @@ function handleGameJoined(data) {
 }
 
 function handlePlayerJoined(data) {
-    if (gameState.isHost) {
+    if (gameState.isHost && data.game) {
         gameState.players = data.game.players;
         updatePlayersList(data.game.players);
     }
@@ -395,6 +396,7 @@ function handleCardDrawn(data) {
     gameState.currentPlayer = data.player;
     updatePlayerInfo();
     updateSidebar();
+    updateJailCardCounter();
 }
 
 function showCardModal(card, deckType) {
@@ -711,10 +713,10 @@ function showBuildingModal(property, buildType, cost) {
     modalTitle.textContent = `Build on ${property.name}`;
     
     if (buildType === 'hotel') {
-        modalMessage.textContent = `Upgrade to hotel for ₹${cost}? (Removes 4 houses)`;
+        modalMessage.textContent = `Upgrade to Hotel for ₹${cost}? (Removes 4 Houses)`;
     } else {
         const currentHouses = property.houses || 0;
-        modalMessage.textContent = `Build house ${currentHouses + 1} for ₹${cost}?`;
+        modalMessage.textContent = `Build House ${currentHouses + 1} for ₹${cost}?`;
     }
     
     buildBtn.onclick = () => {
@@ -737,6 +739,27 @@ function buildProperty(propertyPosition, buildType) {
         });
     }
 }
+
+function updateJailCardCounter() {
+    const counterEl = document.getElementById('jailCardsCount');
+    if (!counterEl) return;
+
+    // Find the currentPlayer from players array to get the latest data
+    if (!gameState.currentPlayer || !gameState.players) {
+        counterEl.textContent = '0';
+        return;
+    }
+
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer.id);
+    if (!currentPlayer) {
+        counterEl.textContent = '0';
+        return;
+    }
+
+    const count = currentPlayer.getOutOfJailCards || 0;
+    counterEl.textContent = count;
+}
+
 
 
 function updateGameBoard() {

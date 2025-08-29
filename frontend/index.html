@@ -93,23 +93,9 @@
         </div>
     </div>
     <!-- Add this inside your game controls section -->
-    <div id="jailOptions" class="jail-options" style="display: none;">
-        <div class="jail-info">
-            <h4>🏫 In Detention</h4>
-            <p>You can:</p>
-            <div class="jail-actions">
-                <button id="payJailFineBtn" class="btn btn--warning btn--small" onclick="payJailFine()">
-                    Pay ₹50 Fine
-                </button>
-                <button id="useJailCardBtn" class="btn btn--success btn--small" onclick="useJailCard()">
-                    Use "Get Out Free" Card
-                </button>
-                <button id="rollForDoublesBtn" class="btn btn--primary btn--small" onclick="rollDice()">
-                    Roll for Doubles
-                </button>
-            </div>
-        </div>
-    </div>
+
+
+
     <!-- Building Modal -->
     <div id="buildingModal" class="card-modal" style="display: none;">
         <div class="card-modal-content">
@@ -165,6 +151,26 @@
                 <div class="players-panel">
                     <h3>All Players</h3>
                     <div id="allPlayers"></div>
+                </div>
+                <div id="jailCardCounter" class="jail-card-counter">
+                    🃏 Get Out of Jail Free Cards: <span id="jailCardsCount">0</span>
+                </div>
+                <div id="jailOptions" class="jail-options" style="display: none;">
+                    <div class="jail-info">
+                        <h4>🏫 In Detention</h4>
+                        <p>You can:</p>
+                        <div class="jail-actions">
+                            <button id="payJailFineBtn" class="btn btn--warning btn--small" onclick="payJailFine()">
+                                Pay ₹50 Fine
+                            </button>
+                            <button id="useJailCardBtn" class="btn btn--success btn--small" onclick="useJailCard()">
+                                Use "Get Out Free" Card
+                            </button>
+                            <button id="rollForDoublesBtn" class="btn btn--primary btn--small" onclick="rollDice()">
+                                Roll for Doubles
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
