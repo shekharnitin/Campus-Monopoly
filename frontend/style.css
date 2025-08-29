@@ -621,16 +621,28 @@ body {
 }
 
 .card-modal-content {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(to right, #005AA7, #fffde4);
     margin: 15% auto;
     padding: 30px;
     border-radius: 15px;
     width: 80%;
     max-width: 400px;
     text-align: center;
-    color: white;
+    color: black;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    animation: slideIn 0.3s;
+    animation: gradient-animation 18s ease infinite;
+}
+
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .card-modal h3 {
@@ -781,31 +793,62 @@ body {
     position: absolute;
     top: 2px;
     right: 2px;
-    background: #10b981;
+    background: #22c55e;  /* Green for houses */
     color: white;
-    border-radius: 50%;
-    width: 16px;
+    border: 2px solid white;
+    border-radius: 4px;
+    width: 20px;
     height: 16px;
-    font-size: 10px;
+    font-size: 11px;
+    font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 5;
 }
 
 .board-space.has-hotel::after {
-    content: "H";
+    content: "🏨";  /* Hotel emoji or use "H" */
     position: absolute;
     top: 2px;
     right: 2px;
-    background: #dc2626;
+    background: #dc2626;  /* Red for hotel */
     color: white;
-    border-radius: 3px;
-    width: 16px;
+    border: 2px solid white;
+    border-radius: 4px;
+    width: 20px;
     height: 16px;
-    font-size: 10px;
+    font-size: 12px;
+    font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 5;
+}
+.board-space.has-hotel.text-hotel::after {
+    content: "H";
+    font-size: 10px;
+}
+
+/* House progression visual styling */
+.board-space.has-houses[data-houses="1"]::after {
+    background: #22c55e;
+}
+.board-space.has-houses[data-houses="2"]::after {
+    background: #16a34a;
+}
+.board-space.has-houses[data-houses="3"]::after {
+    background: #15803d;
+}
+.board-space.has-houses[data-houses="4"]::after {
+    background: #166534;
+}
+
+/* Hover effects for building indicators */
+.board-space.has-houses:hover::after,
+.board-space.has-hotel:hover::after {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
 }

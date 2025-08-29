@@ -557,6 +557,7 @@ function createBoard() {
     campusBuildings.forEach((building, index) => {
         const space = document.createElement('div');
         space.className = `board-space ${building.color || building.type}`;
+        space.setAttribute('data-position', index); 
         space.innerHTML = `
             <div class="space-name">${building.name}</div>
             ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
@@ -744,12 +745,14 @@ function updateGameBoard() {
     gameState.board.forEach(property => {
         const spaceElement = document.querySelector(`[data-position="${property.position}"]`);
         if (spaceElement && property.type === 'property') {
-            // Update building indicators
+            // Clear existing building classes
             spaceElement.classList.remove('has-houses', 'has-hotel');
             spaceElement.removeAttribute('data-houses');
             
             if (property.hotel) {
                 spaceElement.classList.add('has-hotel');
+                // Add text-hotel class if you prefer "H" over emoji
+                // spaceElement.classList.add('text-hotel');
             } else if (property.houses && property.houses > 0) {
                 spaceElement.classList.add('has-houses');
                 spaceElement.setAttribute('data-houses', property.houses);
