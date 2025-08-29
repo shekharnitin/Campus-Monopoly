@@ -767,3 +767,45 @@ body {
     0%, 100% { opacity: 0.7; }
     50% { opacity: 1; }
 }
+
+.building-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+/* Visual indicators for built properties */
+.board-space.has-houses::after {
+    content: attr(data-houses);
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #10b981;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.board-space.has-hotel::after {
+    content: "H";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #dc2626;
+    color: white;
+    border-radius: 3px;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}

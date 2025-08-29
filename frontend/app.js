@@ -99,6 +99,8 @@ function setupSocketListeners() {
     socket.on('playerSentToJail', handlePlayerSentToJail);
     socket.on('playerLeftJail', handlePlayerLeftJail);
     socket.on('jailTurnFailed', handleJailTurnFailed);
+    socket.on('buildingOffer', handleBuildingOffer);
+    socket.on('propertyBuilt', handlePropertyBuilt);
 }
 
 function initializeUI() {
@@ -684,7 +686,76 @@ function hidePropertyInfo() {
     infoCard.classList.add('hidden');
 }
 
+function handleBuildingOffer(data) {
+    showBuildingModal(data.property, data.buildType, data.cost);
+}
+
+function handlePropertyBuilt(data) {
+    addToGameLog(`${data.player.name} built a ${data.buildType} on ${data.property.name}`);
+    
+    // Update game state
+    gameState.players = data.game.players;
+    gameState.board = data.game.board;
+    updatePlayerInfo();
+    updateGameBoard();
+    updateSidebar();
+}
+
+function showBuildingModal(property, buildType, cost) {
+    const modal = document.getElementById('buildingModal');
+    const modalTitle = document.getElementById('buildingModalTitle');
+    const modalMessage = document.getElementById('buildingModalMessage');
+    const buildBtn = document.getElementById('buildConfirmBtn');
+    
+    modalTitle.textContent = `Build on ${property.name}`;
+    
+    if (buildType === 'hotel') {
+        modalMessage.textContent = `Upgrade to hotel for ₹${cost}? (Removes 4 houses)`;
+    } else {
+        const currentHouses = property.houses || 0;
+        modalMessage.textContent = `Build house ${currentHouses + 1} for ₹${cost}?`;
+    }
+    
+    buildBtn.onclick = () => {
+        buildProperty(property.position, buildType);
+        closeBuildingModal();
+    };
+    
+    modal.style.display = 'block';
+}
+
+function closeBuildingModal() {
+    document.getElementById('buildingModal').style.display = 'none';
+}
+
+function buildProperty(propertyPosition, buildType) {
+    if (socket && socket.connected) {
+        socket.emit('buildProperty', {
+            propertyPosition: propertyPosition,
+            buildType: buildType
+        });
+    }
+}
+
+
 function updateGameBoard() {
+    if (!gameState.board) return;
+    
+    gameState.board.forEach(property => {
+        const spaceElement = document.querySelector(`[data-position="${property.position}"]`);
+        if (spaceElement && property.type === 'property') {
+            // Update building indicators
+            spaceElement.classList.remove('has-houses', 'has-hotel');
+            spaceElement.removeAttribute('data-houses');
+            
+            if (property.hotel) {
+                spaceElement.classList.add('has-hotel');
+            } else if (property.houses && property.houses > 0) {
+                spaceElement.classList.add('has-houses');
+                spaceElement.setAttribute('data-houses', property.houses);
+            }
+        }
+    });
     // Update board with current game state
     if (gameState.board) {
         gameState.board.forEach((space, index) => {

@@ -86,33 +86,45 @@
     </div>
 
     <div id="cardModal" class="card-modal">
-    <div class="card-modal-content">
-        <h3 id="cardType">Chance Card</h3>
-        <p id="cardMessage">Card message will appear here</p>
-        <button onclick="closeCardModal()">Continue</button>
-    </div>
-</div>
-<!-- Add this inside your game controls section -->
-<div id="jailOptions" class="jail-options" style="display: none;">
-    <div class="jail-info">
-        <h4>🏫 In Detention</h4>
-        <p>You can:</p>
-        <div class="jail-actions">
-            <button id="payJailFineBtn" class="btn btn--warning btn--small" onclick="payJailFine()">
-                Pay ₹50 Fine
-            </button>
-            <button id="useJailCardBtn" class="btn btn--success btn--small" onclick="useJailCard()">
-                Use "Get Out Free" Card
-            </button>
-            <button id="rollForDoublesBtn" class="btn btn--primary btn--small" onclick="rollDice()">
-                Roll for Doubles
-            </button>
+        <div class="card-modal-content">
+            <h3 id="cardType">Chance Card</h3>
+            <p id="cardMessage">Card message will appear here</p>
+            <button onclick="closeCardModal()">Continue</button>
         </div>
     </div>
-</div>
-
-
-
+    <!-- Add this inside your game controls section -->
+    <div id="jailOptions" class="jail-options" style="display: none;">
+        <div class="jail-info">
+            <h4>🏫 In Detention</h4>
+            <p>You can:</p>
+            <div class="jail-actions">
+                <button id="payJailFineBtn" class="btn btn--warning btn--small" onclick="payJailFine()">
+                    Pay ₹50 Fine
+                </button>
+                <button id="useJailCardBtn" class="btn btn--success btn--small" onclick="useJailCard()">
+                    Use "Get Out Free" Card
+                </button>
+                <button id="rollForDoublesBtn" class="btn btn--primary btn--small" onclick="rollDice()">
+                    Roll for Doubles
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Building Modal -->
+    <div id="buildingModal" class="card-modal" style="display: none;">
+        <div class="card-modal-content">
+            <h3 id="buildingModalTitle">Build Property</h3>
+            <p id="buildingModalMessage">Would you like to build?</p>
+            <div class="building-actions">
+                <button id="buildConfirmBtn" class="btn btn--success">
+                    Build
+                </button>
+                <button onclick="closeBuildingModal()" class="btn btn--danger">
+                    Pass
+                </button>
+            </div>
+        </div>
+    </div>
     <!-- Game Board -->
     <div id="gameBoard" class="screen hidden">
         <div class="board-container">

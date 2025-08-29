@@ -1,25 +1,25 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const cors = require('cors');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
-const Joi = require('joi');
-require('dotenv').config();
+const express = require("express");
+const http = require("http");
+const socketIo = require("socket.io");
+const cors = require("cors");
+const path = require("path");
+const { v4: uuidv4 } = require("uuid");
+const Joi = require("joi");
+require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
-    }
+        methods: ["GET", "POST"],
+    },
 });
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, "../frontend")));
 
 // Game state storage
 const games = new Map();
@@ -27,90 +27,297 @@ const players = new Map();
 
 // Campus buildings data
 const campusBuildings = [
-    { "name": "Main Gate", "type": "start", "position": 0 },
-    { "name": "Old Library Building", "type": "property", "position": 1, "price": 60, "color": "brown", "rent": [2, 10, 30, 90, 160, 250] },
-    { "name": "Community Chest", "type": "community_chest", "position": 2 },
-    { "name": "Heritage Building", "type": "property", "position": 3, "price": 80, "color": "brown", "rent": [4, 20, 60, 180, 320, 450] },
-    { "name": "Income Tax", "type": "tax", "position": 4, "amount": 200 },
-    { "name": "RD", "type": "property", "position": 5, "price": 200, "color": "blue", "rent": [8, 40, 100, 300, 450, 600] },
-    { "name": "NLHC", "type": "property", "position": 6, "price": 100, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
-    { "name": "Chance", "type": "chance", "position": 7 },
-    { "name": "OAT", "type": "property", "position": 8, "price": 120, "color": "blue", "rent": [8, 40, 100, 300, 450, 600] },
-    { "name": "Penman Auditorium", "type": "property", "position": 9, "price": 140, "color": "blue", "rent": [10, 50, 150, 450, 625, 750] },
-    { "name": "Jail", "type": "jail", "position": 10 },
-    { "name": "Central Research Facility", "type": "property", "position": 11, "price": 140, "color": "pink", "rent": [10, 50, 150, 450, 625, 750] },
-    { "name": "Wi-Fi Network", "type": "utility", "position": 12, "price": 150 },
-    { "name": "Science Block", "type": "property", "position": 13, "price": 160, "color": "orange", "rent": [12, 60, 180, 500, 700, 900] },
-    { "name": "Management Studies", "type": "property", "position": 14, "price": 180, "color": "orange", "rent": [14, 70, 200, 550, 750, 950] },
-    { "name": "Cycle Stand", "type": "transport", "position": 15, "price": 200 },
-    { "name": "Computer Science", "type": "property", "position": 16, "price": 180, "color": "orange", "rent": [14, 70, 200, 550, 750, 950] },
-    { "name": "Community Chest", "type": "community_chest", "position": 17 },
-    { "name": "Petroleum Engineering", "type": "property", "position": 18, "price": 200, "color": "orange", "rent": [16, 80, 220, 600, 800, 1000] },
-    { "name": "Environmental Science", "type": "property", "position": 19, "price": 220, "color": "orange", "rent": [18, 90, 250, 700, 875, 1050] },
-    { "name": "Free Parking", "type": "free_parking", "position": 20 },
-    { "name": "Jasper Hostel", "type": "property", "position": 21, "price": 220, "color": "red", "rent": [18, 90, 250, 700, 875, 1050] },
-    { "name": "Chance", "type": "chance", "position": 22 },
-    { "name": "Sapphire Hostel", "type": "property", "position": 23, "price": 240, "color": "red", "rent": [20, 100, 300, 750, 925, 1100] },
-    { "name": "New Rosaline Hostel", "type": "property", "position": 24, "price": 260, "color": "red", "rent": [22, 110, 330, 800, 975, 1150] },
-    { "name": "Auto Stand", "type": "transport", "position": 25, "price": 200 },
-    { "name": "Sports Complex", "type": "property", "position": 26, "price": 260, "color": "yellow", "rent": [22, 110, 330, 800, 975, 1150] },
-    { "name": "Swimming Pool", "type": "property", "position": 27, "price": 280, "color": "yellow", "rent": [24, 120, 360, 850, 1025, 1200] },
-    { "name": "Power Grid", "type": "utility", "position": 28, "price": 150 },
-    { "name": "SAC", "type": "property", "position": 29, "price": 300, "color": "blue", "rent": [26, 130, 390, 900, 1100, 1275] },
-    { "name": "Go to Jail", "type": "go_to_jail", "position": 30 },
-    { "name": "Central Library", "type": "property", "position": 31, "price": 300, "color": "green", "rent": [26, 130, 390, 900, 1100, 1275] },
-    { "name": "Opal Hostel", "type": "property", "position": 32, "price": 280, "color": "red", "rent": [28, 150, 450, 1000, 1200, 1400] },
-    { "name": "Community Chest", "type": "community_chest", "position": 33 },
-    { "name": "Aquamarine Hostel", "type": "property", "position": 34, "price": 320, "color": "red", "rent": [28, 150, 450, 1000, 1200, 1400] },
-    { "name": "NAC", "type": "property", "position": 35, "price": 200, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
-    { "name": "Chance", "type": "chance", "position": 36 },
-    { "name": "EDC", "type": "property", "position": 37, "price": 350, "color": "blue", "rent": [35, 175, 500, 1100, 1300, 1500] },
-    { "name": "Luxury Tax", "type": "tax", "position": 38, "amount": 100 },
-    { "name": "Shooting Range", "type": "property", "position": 39, "price": 400, "color": "blue", "rent": [50, 200, 600, 1400, 1700, 2000] }
+    { name: "Main Gate", type: "start", position: 0 },
+    {
+        name: "Old Library Building",
+        type: "property",
+        position: 1,
+        price: 60,
+        color: "brown",
+        rent: [2, 10, 30, 90, 160, 250],
+    },
+    { name: "Community Chest", type: "community_chest", position: 2 },
+    {
+        name: "Heritage Building",
+        type: "property",
+        position: 3,
+        price: 80,
+        color: "brown",
+        rent: [4, 20, 60, 180, 320, 450],
+    },
+    { name: "Income Tax", type: "tax", position: 4, amount: 200 },
+    {
+        name: "RD",
+        type: "property",
+        position: 5,
+        price: 200,
+        color: "blue",
+        rent: [8, 40, 100, 300, 450, 600],
+    },
+    {
+        name: "NLHC",
+        type: "property",
+        position: 6,
+        price: 100,
+        color: "light_blue",
+        rent: [6, 30, 90, 270, 400, 550],
+    },
+    { name: "Chance", type: "chance", position: 7 },
+    {
+        name: "OAT",
+        type: "property",
+        position: 8,
+        price: 120,
+        color: "blue",
+        rent: [8, 40, 100, 300, 450, 600],
+    },
+    {
+        name: "Penman Auditorium",
+        type: "property",
+        position: 9,
+        price: 140,
+        color: "blue",
+        rent: [10, 50, 150, 450, 625, 750],
+    },
+    { name: "Jail", type: "jail", position: 10 },
+    {
+        name: "Central Research Facility",
+        type: "property",
+        position: 11,
+        price: 140,
+        color: "pink",
+        rent: [10, 50, 150, 450, 625, 750],
+    },
+    { name: "Wi-Fi Network", type: "utility", position: 12, price: 150 },
+    {
+        name: "Science Block",
+        type: "property",
+        position: 13,
+        price: 160,
+        color: "orange",
+        rent: [12, 60, 180, 500, 700, 900],
+    },
+    {
+        name: "Management Studies",
+        type: "property",
+        position: 14,
+        price: 180,
+        color: "orange",
+        rent: [14, 70, 200, 550, 750, 950],
+    },
+    { name: "Cycle Stand", type: "transport", position: 15, price: 200 },
+    {
+        name: "Computer Science",
+        type: "property",
+        position: 16,
+        price: 180,
+        color: "orange",
+        rent: [14, 70, 200, 550, 750, 950],
+    },
+    { name: "Community Chest", type: "community_chest", position: 17 },
+    {
+        name: "Petroleum Engineering",
+        type: "property",
+        position: 18,
+        price: 200,
+        color: "orange",
+        rent: [16, 80, 220, 600, 800, 1000],
+    },
+    {
+        name: "Environmental Science",
+        type: "property",
+        position: 19,
+        price: 220,
+        color: "orange",
+        rent: [18, 90, 250, 700, 875, 1050],
+    },
+    { name: "Free Parking", type: "free_parking", position: 20 },
+    {
+        name: "Jasper Hostel",
+        type: "property",
+        position: 21,
+        price: 220,
+        color: "red",
+        rent: [18, 90, 250, 700, 875, 1050],
+    },
+    { name: "Chance", type: "chance", position: 22 },
+    {
+        name: "Sapphire Hostel",
+        type: "property",
+        position: 23,
+        price: 240,
+        color: "red",
+        rent: [20, 100, 300, 750, 925, 1100],
+    },
+    {
+        name: "New Rosaline Hostel",
+        type: "property",
+        position: 24,
+        price: 260,
+        color: "red",
+        rent: [22, 110, 330, 800, 975, 1150],
+    },
+    { name: "Auto Stand", type: "transport", position: 25, price: 200 },
+    {
+        name: "Sports Complex",
+        type: "property",
+        position: 26,
+        price: 260,
+        color: "yellow",
+        rent: [22, 110, 330, 800, 975, 1150],
+    },
+    {
+        name: "Swimming Pool",
+        type: "property",
+        position: 27,
+        price: 280,
+        color: "yellow",
+        rent: [24, 120, 360, 850, 1025, 1200],
+    },
+    { name: "Power Grid", type: "utility", position: 28, price: 150 },
+    {
+        name: "SAC",
+        type: "property",
+        position: 29,
+        price: 300,
+        color: "blue",
+        rent: [26, 130, 390, 900, 1100, 1275],
+    },
+    { name: "Go to Jail", type: "go_to_jail", position: 30 },
+    {
+        name: "Central Library",
+        type: "property",
+        position: 31,
+        price: 300,
+        color: "green",
+        rent: [26, 130, 390, 900, 1100, 1275],
+    },
+    {
+        name: "Opal Hostel",
+        type: "property",
+        position: 32,
+        price: 280,
+        color: "red",
+        rent: [28, 150, 450, 1000, 1200, 1400],
+    },
+    { name: "Community Chest", type: "community_chest", position: 33 },
+    {
+        name: "Aquamarine Hostel",
+        type: "property",
+        position: 34,
+        price: 320,
+        color: "red",
+        rent: [28, 150, 450, 1000, 1200, 1400],
+    },
+    {
+        name: "NAC",
+        type: "property",
+        position: 35,
+        price: 200,
+        color: "light_blue",
+        rent: [6, 30, 90, 270, 400, 550],
+    },
+    { name: "Chance", type: "chance", position: 36 },
+    {
+        name: "EDC",
+        type: "property",
+        position: 37,
+        price: 350,
+        color: "blue",
+        rent: [35, 175, 500, 1100, 1300, 1500],
+    },
+    { name: "Luxury Tax", type: "tax", position: 38, amount: 100 },
+    {
+        name: "Shooting Range",
+        type: "property",
+        position: 39,
+        price: 400,
+        color: "blue",
+        rent: [50, 200, 600, 1400, 1700, 2000],
+    },
 ];
 
 const chanceCards = [
-    { type: 'money', amount: 200, message: 'Scholarship Awarded! Collect ₹200' },
-    { type: 'money', amount: 150, message: 'Research Grant Approved! Collect ₹150' },
-    { type: 'money', amount: -50, message: 'Late Assignment Penalty! Pay ₹50' },
-    { type: 'money', amount: -100, message: 'Hostel Damage Fine! Pay ₹100' },
-    { type: 'move', position: 0, message: 'Advance to Main Gate! Collect ₹200' },
-    { type: 'move', position: 31, message: 'Go to Central Library!' },
-    { type: 'jail', message: 'Go to Detention! Move directly to Jail' },
-    { type: 'payall', amount: 25, message: 'Student Council Election! Pay ₹25 to each player' },
-    { type: 'collectall', amount: 25, message: 'Group Study Session! Collect ₹25 from each player' },
-    { type: 'repair', house: 40, hotel: 115, message: 'Property Tax! Pay ₹40 per house, ₹115 per hotel' },
-    { type: 'getoutofjail', message: 'Get Out of Detention Free! Keep this card' }
+    { type: "money", amount: 200, message: "Scholarship Awarded! Collect ₹200" },
+    {
+        type: "money",
+        amount: 150,
+        message: "Research Grant Approved! Collect ₹150",
+    },
+    { type: "money", amount: -50, message: "Late Assignment Penalty! Pay ₹50" },
+    { type: "money", amount: -100, message: "Hostel Damage Fine! Pay ₹100" },
+    { type: "move", position: 0, message: "Advance to Main Gate! Collect ₹200" },
+    { type: "move", position: 31, message: "Go to Central Library!" },
+    { type: "jail", message: "Go to Detention! Move directly to Jail" },
+    {
+        type: "payall",
+        amount: 25,
+        message: "Student Council Election! Pay ₹25 to each player",
+    },
+    {
+        type: "collectall",
+        amount: 25,
+        message: "Group Study Session! Collect ₹25 from each player",
+    },
+    {
+        type: "repair",
+        house: 40,
+        hotel: 115,
+        message: "Property Tax! Pay ₹40 per house, ₹115 per hotel",
+    },
+    {
+        type: "getoutofjail",
+        message: "Get Out of Detention Free! Keep this card",
+    },
 ];
 
 const communityChestCards = [
-    { type: 'money', amount: 100, message: 'Emergency Scholarship! Collect ₹100' },
-    { type: 'money', amount: 50, message: 'Birthday Money from Home! Collect ₹50' },
-    { type: 'money', amount: -50, message: 'Medical Center Bill! Pay ₹50' },
-    { type: 'money', amount: -100, message: 'Semester Fee Due! Pay ₹100' },
-    { type: 'money', amount: 125, message: 'Campus Competition Prize! Collect ₹125' },
-    { type: 'repair', house: 40, hotel: 100, message: 'Campus Maintenance! Pay ₹40 per house, ₹100 per hotel' },
-    { type: 'getoutofjail', message: 'Get Out of Detention Free! Keep this card' }
+    {
+        type: "money",
+        amount: 100,
+        message: "Emergency Scholarship! Collect ₹100",
+    },
+    {
+        type: "money",
+        amount: 50,
+        message: "Birthday Money from Home! Collect ₹50",
+    },
+    { type: "money", amount: -50, message: "Medical Center Bill! Pay ₹50" },
+    { type: "money", amount: -100, message: "Semester Fee Due! Pay ₹100" },
+    {
+        type: "money",
+        amount: 125,
+        message: "Campus Competition Prize! Collect ₹125",
+    },
+    {
+        type: "repair",
+        house: 40,
+        hotel: 100,
+        message: "Campus Maintenance! Pay ₹40 per house, ₹100 per hotel",
+    },
+    {
+        type: "getoutofjail",
+        message: "Get Out of Detention Free! Keep this card",
+    },
 ];
-
 
 const gameConfig = {
     startingMoney: 1500,
     salaryAmount: 200,
     maxPlayers: 8,
-    minPlayers: 2
+    minPlayers: 2,
 };
 
 const playerTokens = ["🎓", "📚", "⚗️", "🏗️", "🎯", "🏆", "🎨", "🔬"];
 
 // Validation schemas
 const createGameSchema = Joi.object({
-    hostName: Joi.string().min(2).max(30).required()
+    hostName: Joi.string().min(2).max(30).required(),
 });
 
 const joinGameSchema = Joi.object({
     gameCode: Joi.string().length(6).required(),
-    playerName: Joi.string().min(2).max(30).required()
+    playerName: Joi.string().min(2).max(30).required(),
 });
 
 // Utility functions
@@ -126,16 +333,16 @@ function createNewGame(hostName, hostSocketId) {
         hostId: hostSocketId,
         hostName: hostName,
         players: [],
-        gameState: 'waiting',
+        gameState: "waiting",
         currentPlayerIndex: 0,
-        board: campusBuildings.map(building => ({
+        board: campusBuildings.map((building) => ({
             ...building,
             owner: null,
             houses: 0,
-            mortgaged: false
+            mortgaged: false,
         })),
         createdAt: new Date(),
-        gameLog: []
+        gameLog: [],
     };
 
     games.set(gameCode, game);
@@ -147,11 +354,11 @@ function addPlayerToGame(gameCode, playerName, socketId) {
     if (!game) return null;
 
     if (game.players.length >= gameConfig.maxPlayers) {
-        return { error: 'Game is full' };
+        return { error: "Game is full" };
     }
 
-    if (game.gameState !== 'waiting') {
-        return { error: 'Game already started' };
+    if (game.gameState !== "waiting") {
+        return { error: "Game already started" };
     }
 
     const player = {
@@ -164,7 +371,7 @@ function addPlayerToGame(gameCode, playerName, socketId) {
         inJail: false,
         jailTurns: 0,
         token: playerTokens[game.players.length % playerTokens.length],
-        bankrupt: false
+        bankrupt: false,
     };
 
     game.players.push(player);
@@ -186,10 +393,9 @@ function initializeCardDecks() {
         chance: shuffleArray([...chanceCards]),
         communityChest: shuffleArray([...communityChestCards]),
         chanceIndex: 0,
-        communityIndex: 0
+        communityIndex: 0,
     };
 }
-
 
 // Game logic functions
 function rollDice() {
@@ -197,7 +403,7 @@ function rollDice() {
 }
 
 function movePlayer(game, playerId, steps) {
-    const player = game.players.find(p => p.id === playerId);
+    const player = game.players.find((p) => p.id === playerId);
     if (!player) return false;
 
     const oldPosition = player.position;
@@ -206,30 +412,44 @@ function movePlayer(game, playerId, steps) {
     // Collect salary if passed START
     if (oldPosition + steps >= 40) {
         player.money += gameConfig.salaryAmount;
-        game.gameLog.push(`${player.name} passed Main Gate and collected ₹${gameConfig.salaryAmount}`);
+        game.gameLog.push(
+            `${player.name} passed Main Gate and collected ₹${gameConfig.salaryAmount}`
+        );
     }
 
     return true;
 }
 
 function calculateRent(property, game, lastDiceRoll = [1, 1]) {
-    if (property.type === 'transport') {
-        const ownedTransports = game.board.filter(p =>
-            p.type === 'transport' && p.owner === property.owner
+    if (property.type === "transport") {
+        const ownedTransports = game.board.filter(
+            (p) => p.type === "transport" && p.owner === property.owner
         ).length;
         return 25 * Math.pow(2, ownedTransports - 1);
     }
 
-    if (property.type === 'utility') {
-        const ownedUtilities = game.board.filter(p =>
-            p.type === 'utility' && p.owner === property.owner
+    if (property.type === "utility") {
+        const ownedUtilities = game.board.filter(
+            (p) => p.type === "utility" && p.owner === property.owner
         ).length;
         const multiplier = ownedUtilities === 1 ? 4 : 10;
         return (lastDiceRoll[0] + lastDiceRoll[1]) * multiplier;
     }
 
-    if (property.type === 'property') {
-        return property.rent[property.houses];
+    if (property.type === "property") {
+        // Check for hotel
+        if (property.hotel) {
+            return property.rent[5] || property.rent[4]; // Hotel rent (highest)
+        }
+
+        // Check for houses (1-4)
+        const houses = property.houses || 0;
+        if (houses > 0) {
+            return property.rent[houses]; // House rent based on number of houses
+        }
+
+        // Base rent (no houses, no hotel)
+        return property.rent[0];
     }
 
     return 0;
@@ -242,7 +462,7 @@ function drawCard(game, cardType) {
 
     let card, deck, index;
 
-    if (cardType === 'chance') {
+    if (cardType === "chance") {
         deck = game.cardDecks.chance;
         index = game.cardDecks.chanceIndex;
         game.cardDecks.chanceIndex = (index + 1) % deck.length;
@@ -259,7 +479,7 @@ function executeCard(game, player, card, deckType) {
     let message = card.message;
 
     switch (card.type) {
-        case 'money':
+        case "money":
             player.money += card.amount;
             if (card.amount < 0 && player.money < 0) {
                 player.bankrupt = true;
@@ -267,49 +487,54 @@ function executeCard(game, player, card, deckType) {
             }
             break;
 
-        case 'move':
+        case "move":
             const oldPosition = player.position;
             player.position = card.position;
-            if (card.position === 0 || (oldPosition > card.position)) {
+            if (card.position === 0 || oldPosition > card.position) {
                 player.money += gameConfig.salaryAmount;
                 message += ` Collected ₹${gameConfig.salaryAmount} for passing Main Gate!`;
             }
             break;
 
-        case 'jail':
+        case "jail":
             player.position = 10;
             player.inJail = true;
             player.jailTurns = 0;
             player.doublesCount = 0;
             game.gameLog.push(`${player.name} was sent to Detention by card!`);
-            io.to(game.code).emit('playerSentToJail', {
+            io.to(game.code).emit("playerSentToJail", {
                 player: player,
-                game: game
+                game: game,
             });
             break;
 
-        case 'payall':
-            const activePlayers = game.players.filter(p => !p.bankrupt && p.id !== player.id);
+        case "payall":
+            const activePlayers = game.players.filter(
+                (p) => !p.bankrupt && p.id !== player.id
+            );
             const totalPay = card.amount * activePlayers.length;
             player.money -= totalPay;
-            activePlayers.forEach(p => p.money += card.amount);
+            activePlayers.forEach((p) => (p.money += card.amount));
             break;
 
-        case 'collectall':
-            const otherPlayers = game.players.filter(p => !p.bankrupt && p.id !== player.id);
-            otherPlayers.forEach(p => {
+        case "collectall":
+            const otherPlayers = game.players.filter(
+                (p) => !p.bankrupt && p.id !== player.id
+            );
+            otherPlayers.forEach((p) => {
                 p.money -= card.amount;
                 player.money += card.amount;
             });
             break;
 
-        case 'repair':
-            const repairCost = (player.houses || 0) * card.house + (player.hotels || 0) * card.hotel;
+        case "repair":
+            const repairCost =
+                (player.houses || 0) * card.house + (player.hotels || 0) * card.hotel;
             player.money -= repairCost;
             message += ` Total cost: ₹${repairCost}`;
             break;
 
-        case 'getoutofjail':
+        case "getoutofjail":
             if (!player.getOutOfJailCards) player.getOutOfJailCards = 0;
             player.getOutOfJailCards++;
             break;
@@ -317,29 +542,28 @@ function executeCard(game, player, card, deckType) {
 
     return {
         message: message,
-        deckType: deckType
+        deckType: deckType,
     };
 }
 
-
 // REST API Endpoints
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
-app.get('/api/health', (req, res) => {
+app.get("/api/health", (req, res) => {
     res.json({
-        status: 'healthy',
+        status: "healthy",
         timestamp: new Date(),
         activeGames: games.size,
-        activePlayers: players.size
+        activePlayers: players.size,
     });
 });
 
-app.get('/api/games/:code', (req, res) => {
+app.get("/api/games/:code", (req, res) => {
     const game = games.get(req.params.code);
     if (!game) {
-        return res.status(404).json({ error: 'Game not found' });
+        return res.status(404).json({ error: "Game not found" });
     }
 
     const publicGame = {
@@ -348,21 +572,21 @@ app.get('/api/games/:code', (req, res) => {
         playerCount: game.players.length,
         maxPlayers: gameConfig.maxPlayers,
         gameState: game.gameState,
-        createdAt: game.createdAt
+        createdAt: game.createdAt,
     };
 
     res.json(publicGame);
 });
 
 // WebSocket event handlers
-io.on('connection', (socket) => {
+io.on("connection", (socket) => {
     console.log(`Player connected: ${socket.id}`);
 
-    socket.on('createGame', (data) => {
+    socket.on("createGame", (data) => {
         try {
             const { error, value } = createGameSchema.validate(data);
             if (error) {
-                socket.emit('error', { message: error.details[0].message });
+                socket.emit("error", { message: error.details[0].message });
                 return;
             }
 
@@ -377,117 +601,126 @@ io.on('connection', (socket) => {
                 inJail: false,
                 jailTurns: 0,
                 token: playerTokens[0],
-                bankrupt: false
+                bankrupt: false,
             };
             game.players.push(hostPlayer);
 
             socket.join(game.code);
-            players.set(socket.id, { gameCode: game.code, playerId: hostPlayer.id, isHost: true });
+            players.set(socket.id, {
+                gameCode: game.code,
+                playerId: hostPlayer.id,
+                isHost: true,
+            });
 
-
-            socket.emit('gameCreated', {
+            socket.emit("gameCreated", {
                 gameCode: game.code,
                 hostId: game.hostId,
-                game: game
+                game: game,
             });
 
             console.log(`Game created: ${game.code} by ${value.hostName}`);
         } catch (err) {
-            socket.emit('error', { message: 'Failed to create game' });
+            socket.emit("error", { message: "Failed to create game" });
         }
     });
 
-    socket.on('joinGame', (data) => {
+    socket.on("joinGame", (data) => {
         try {
             const { error, value } = joinGameSchema.validate(data);
             if (error) {
-                socket.emit('error', { message: error.details[0].message });
+                socket.emit("error", { message: error.details[0].message });
                 return;
             }
 
-            const result = addPlayerToGame(value.gameCode, value.playerName, socket.id);
+            const result = addPlayerToGame(
+                value.gameCode,
+                value.playerName,
+                socket.id
+            );
             if (!result) {
-                socket.emit('error', { message: 'Game not found' });
+                socket.emit("error", { message: "Game not found" });
                 return;
             }
 
             if (result.error) {
-                socket.emit('error', { message: result.error });
+                socket.emit("error", { message: result.error });
                 return;
             }
 
             socket.join(value.gameCode);
 
-            socket.emit('gameJoined', {
+            socket.emit("gameJoined", {
                 player: result.player,
-                game: result.game
+                game: result.game,
             });
 
-            socket.to(value.gameCode).emit('playerJoined', {
+            socket.to(value.gameCode).emit("playerJoined", {
                 player: result.player,
-                playerCount: result.game.players.length
+                playerCount: result.game.players.length,
             });
 
             const hostSocket = io.sockets.sockets.get(result.game.hostId);
             if (hostSocket) {
-                hostSocket.emit('playerJoined', {
+                hostSocket.emit("playerJoined", {
                     player: result.player,
-                    game: result.game
+                    game: result.game,
                 });
             }
 
             console.log(`Player ${value.playerName} joined game ${value.gameCode}`);
         } catch (err) {
-            socket.emit('error', { message: 'Failed to join game' });
+            socket.emit("error", { message: "Failed to join game" });
         }
     });
 
-    socket.on('startGame', (data) => {
+    socket.on("startGame", (data) => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo) {
-            socket.emit('error', { message: 'Player not in any game' });
+            socket.emit("error", { message: "Player not in any game" });
             return;
         }
 
         const game = games.get(playerInfo.gameCode);
         if (!game || game.hostId !== socket.id) {
-            socket.emit('error', { message: 'Only host can start the game' });
+            socket.emit("error", { message: "Only host can start the game" });
             return;
         }
 
         if (game.players.length < gameConfig.minPlayers) {
-            socket.emit('error', { message: `Need at least ${gameConfig.minPlayers} players to start` });
+            socket.emit("error", {
+                message: `Need at least ${gameConfig.minPlayers} players to start`,
+            });
             return;
         }
 
-        game.gameState = 'playing';
+        game.gameState = "playing";
         game.currentPlayerIndex = 0;
-        game.gameLog.push('Game started!');
+        game.gameLog.push("Game started!");
 
-        io.to(game.code).emit('gameStarted', {
+        io.to(game.code).emit("gameStarted", {
             game: game,
-            currentPlayer: game.players[0]
+            currentPlayer: game.players[0],
         });
 
         console.log(`Game ${game.code} started`);
     });
 
-    socket.on('rollDice', (data) => {
+    socket.on("rollDice", (data) => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo) {
-            socket.emit('error', { message: 'Player not in any game' });
+            socket.emit("error", { message: "Player not in any game" });
             return;
         }
 
         const game = games.get(playerInfo.gameCode);
-        if (!game || game.gameState !== 'playing') {
-            socket.emit('error', { message: 'Game not in progress' });
+        if (!game || game.gameState !== "playing") {
+            socket.emit("error", { message: "Game not in progress" });
             return;
         }
 
         const currentPlayer = game.players[game.currentPlayerIndex];
         if (currentPlayer.socketId !== socket.id) {
-            socket.emit('error', { message: 'Not your turn' });
+            socket.emit("error", { message: "Not your turn" });
             return;
         }
 
@@ -499,7 +732,7 @@ io.on('connection', (socket) => {
         if (currentPlayer.inJail) {
             const playerMoved = handleJailTurn(game, currentPlayer, dice);
 
-            io.to(game.code).emit('diceRolled', {
+            io.to(game.code).emit("diceRolled", {
                 player: currentPlayer,
                 dice: dice,
                 totalRoll: totalRoll,
@@ -507,11 +740,16 @@ io.on('connection', (socket) => {
                 inJail: true,
                 newPosition: currentPlayer.position,
                 landedProperty: game.board[currentPlayer.position],
-                game: game
+                game: game,
             });
 
             if (playerMoved) {
-                handlePropertyLanding(game, currentPlayer, game.board[currentPlayer.position], dice);
+                handlePropertyLanding(
+                    game,
+                    currentPlayer,
+                    game.board[currentPlayer.position],
+                    dice
+                );
             }
             return;
         }
@@ -527,7 +765,7 @@ io.on('connection', (socket) => {
                 game.gameLog.push(`${currentPlayer.name} rolled 3 doubles in a row!`);
                 sendPlayerToJail(game, currentPlayer);
 
-                io.to(game.code).emit('diceRolled', {
+                io.to(game.code).emit("diceRolled", {
                     player: currentPlayer,
                     dice: dice,
                     totalRoll: totalRoll,
@@ -535,7 +773,7 @@ io.on('connection', (socket) => {
                     tripledDoubles: true,
                     newPosition: currentPlayer.position,
                     landedProperty: game.board[currentPlayer.position],
-                    game: game
+                    game: game,
                 });
                 return;
             }
@@ -546,57 +784,65 @@ io.on('connection', (socket) => {
         movePlayer(game, currentPlayer.id, totalRoll);
 
         const landedProperty = game.board[currentPlayer.position];
-        game.gameLog.push(`${currentPlayer.name} rolled ${dice[0]}+${dice[1]}=${totalRoll} and landed on ${landedProperty.name}`);
+        game.gameLog.push(
+            `${currentPlayer.name} rolled ${dice[0]}+${dice[1]}=${totalRoll} and landed on ${landedProperty.name}`
+        );
 
-        io.to(game.code).emit('diceRolled', {
+        io.to(game.code).emit("diceRolled", {
             player: currentPlayer,
             dice: dice,
             totalRoll: totalRoll,
             isDoubles: isDoubles,
             newPosition: currentPlayer.position,
             landedProperty: landedProperty,
-            game: game
+            game: game,
         });
 
         handlePropertyLanding(game, currentPlayer, landedProperty, dice);
     });
 
-    socket.on('buyProperty', (data) => {
+    socket.on("buyProperty", (data) => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo) {
-            socket.emit('error', { message: 'Player not in any game' });
+            socket.emit("error", { message: "Player not in any game" });
             return;
         }
 
         const game = games.get(playerInfo.gameCode);
-        const player = game.players.find(p => p.socketId === socket.id);
+        const player = game.players.find((p) => p.socketId === socket.id);
 
         // Check if it's player's turn
         const currentPlayer = game.players[game.currentPlayerIndex];
         if (currentPlayer.socketId !== socket.id) {
-            socket.emit('error', { message: 'Not your turn' });
+            socket.emit("error", { message: "Not your turn" });
             return;
         }
 
         const property = game.board[player.position];
 
         // Validation checks
-        if (!property || !['property', 'transport', 'utility'].includes(property.type)) {
-            socket.emit('error', {
-                message: property.type === 'start' ? 'Cannot buy the Main Gate!' :
-                    property.type === 'tax' ? 'Cannot buy tax spaces!' :
-                        'Cannot buy this space'
+        if (
+            !property ||
+            !["property", "transport", "utility"].includes(property.type)
+        ) {
+            socket.emit("error", {
+                message:
+                    property.type === "start"
+                        ? "Cannot buy the Main Gate!"
+                        : property.type === "tax"
+                            ? "Cannot buy tax spaces!"
+                            : "Cannot buy this space",
             });
             return;
         }
 
         if (property.owner) {
-            socket.emit('error', { message: 'Property already owned' });
+            socket.emit("error", { message: "Property already owned" });
             return;
         }
 
         if (player.money < property.price) {
-            socket.emit('error', { message: 'Insufficient funds' });
+            socket.emit("error", { message: "Insufficient funds" });
             return;
         }
 
@@ -605,19 +851,56 @@ io.on('connection', (socket) => {
         property.owner = player.id;
         player.properties.push(property.position);
 
-        game.gameLog.push(`${player.name} bought ${property.name} for ₹${property.price}`);
+        game.gameLog.push(
+            `${player.name} bought ${property.name} for ₹${property.price}`
+        );
 
-        io.to(game.code).emit('propertyPurchased', {
+        io.to(game.code).emit("propertyPurchased", {
             player: player,
             property: property,
-            game: game
+            game: game,
         });
 
         // Don't auto-end turn - let player choose
-
     });
 
-    socket.on('endTurn', (data) => {
+    socket.on("buildProperty", (data) => {
+        const playerInfo = players.get(socket.id);
+        if (!playerInfo) return;
+
+        const game = games.get(playerInfo.gameCode);
+        const player = game.players.find((p) => p.socketId === socket.id);
+
+        if (!data.propertyPosition || !data.buildType) {
+            socket.emit("error", { message: "Invalid building request" });
+            return;
+        }
+
+        const result = buildOnProperty(
+            game,
+            player,
+            data.propertyPosition,
+            data.buildType
+        );
+
+        if (result.success) {
+            const property = game.board.find(
+                (p) => p.position === data.propertyPosition
+            );
+
+            io.to(game.code).emit("propertyBuilt", {
+                player: player,
+                property: property,
+                buildType: data.buildType,
+                buildings: result.buildings,
+                game: game,
+            });
+        } else {
+            socket.emit("error", { message: result.message });
+        }
+    });
+
+    socket.on("endTurn", (data) => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo) return;
 
@@ -627,48 +910,47 @@ io.on('connection', (socket) => {
         endPlayerTurn(game);
     });
 
-    socket.on('payJailFine', (data) => {
+    socket.on("payJailFine", (data) => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo) return;
 
         const game = games.get(playerInfo.gameCode);
-        const player = game.players.find(p => p.socketId === socket.id);
+        const player = game.players.find((p) => p.socketId === socket.id);
 
         if (player.inJail) {
             payJailFine(game, player);
         }
     });
 
-    socket.on('useJailCard', (data) => {
+    socket.on("useJailCard", (data) => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo) return;
 
         const game = games.get(playerInfo.gameCode);
-        const player = game.players.find(p => p.socketId === socket.id);
+        const player = game.players.find((p) => p.socketId === socket.id);
 
         if (player.inJail) {
             useGetOutOfJailCard(game, player);
         }
     });
 
-
-    socket.on('disconnect', () => {
+    socket.on("disconnect", () => {
         console.log(`Player disconnected: ${socket.id}`);
 
         const playerInfo = players.get(socket.id);
         if (playerInfo) {
             const game = games.get(playerInfo.gameCode);
             if (game) {
-                game.players = game.players.filter(p => p.socketId !== socket.id);
+                game.players = game.players.filter((p) => p.socketId !== socket.id);
 
-                socket.to(playerInfo.gameCode).emit('playerLeft', {
+                socket.to(playerInfo.gameCode).emit("playerLeft", {
                     playerId: playerInfo.playerId,
-                    playerCount: game.players.length
+                    playerCount: game.players.length,
                 });
 
                 if (game.hostId === socket.id) {
-                    io.to(playerInfo.gameCode).emit('gameEnded', {
-                        reason: 'Host left the game'
+                    io.to(playerInfo.gameCode).emit("gameEnded", {
+                        reason: "Host left the game",
                     });
                     games.delete(playerInfo.gameCode);
                 }
@@ -684,32 +966,34 @@ io.on('connection', (socket) => {
 });
 
 function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
-    if (property.type === 'jail' && !player.inJail) {
-        game.gameLog.push(`${player.name} is Just Visiting Detention - no penalty!`);
+    if (property.type === "jail" && !player.inJail) {
+        game.gameLog.push(
+            `${player.name} is Just Visiting Detention - no penalty!`
+        );
         return; // Nothing else happens
     }
     // Handle "Go to Jail" space
-    if (property.type === 'go_to_jail') {
+    if (property.type === "go_to_jail") {
         sendPlayerToJail(game, player);
         return;
     }
-    if (property.type === 'chance' || property.type === 'community_chest') {
-        const cardType = property.type === 'chance' ? 'chance' : 'community_chest';
+    if (property.type === "chance" || property.type === "community_chest") {
+        const cardType = property.type === "chance" ? "chance" : "community_chest";
         const card = drawCard(game, cardType);
         const result = executeCard(game, player, card, cardType);
 
         game.gameLog.push(`${player.name} drew: ${result.message}`);
 
-        io.to(game.code).emit('cardDrawn', {
+        io.to(game.code).emit("cardDrawn", {
             player: player,
             card: card,
             result: result.message,
             deckType: result.deckType,
-            game: game
+            game: game,
         });
 
         // Handle movement cards
-        if (card.type === 'move') {
+        if (card.type === "move") {
             const newProperty = game.board[player.position];
             // Recursively handle landing on new property
             setTimeout(() => {
@@ -720,66 +1004,163 @@ function handlePropertyLanding(game, player, property, lastDiceRoll = [1, 1]) {
         return;
     }
     // Handle tax spaces
-    if (property.type === 'tax') {
+    if (property.type === "tax") {
         const taxAmount = property.amount;
 
         if (player.money >= taxAmount) {
             player.money -= taxAmount;
             game.gameLog.push(`${player.name} paid ₹${taxAmount} ${property.name}`);
 
-            io.to(game.code).emit('taxPaid', {
+            io.to(game.code).emit("taxPaid", {
                 player: player,
                 amount: taxAmount,
                 property: property,
-                game: game
+                game: game,
             });
         } else {
             // Player can't afford tax - bankruptcy
-            game.gameLog.push(`${player.name} cannot afford ₹${taxAmount} ${property.name} and is bankrupt!`);
+            game.gameLog.push(
+                `${player.name} cannot afford ₹${taxAmount} ${property.name} and is bankrupt!`
+            );
             player.bankrupt = true;
 
-            io.to(game.code).emit('playerBankrupt', {
+            io.to(game.code).emit("playerBankrupt", {
                 player: player,
-                game: game
+                game: game,
             });
         }
     }
 
+    // Handle landing on own property - offer to build
+    if (property.owner === player.id && property.type === "property") {
+        const buildCheck = canBuildOnProperty(game, player, property.position);
+        if (buildCheck.canBuild) {
+            io.to(game.code).emit("buildingOffer", {
+                player: player,
+                property: property,
+                buildType: buildCheck.buildType,
+                cost: buildCheck.cost,
+                game: game,
+            });
+            return; // Don't process rent on own property
+        }
+    }
+
+    // Handle rent on owned properties
     if (property.owner && property.owner !== player.id && !property.mortgaged) {
         const rent = calculateRent(property, game, lastDiceRoll);
-        const owner = game.players.find(p => p.id === property.owner);
+        const owner = game.players.find((p) => p.id === property.owner);
 
         if (player.money >= rent) {
             player.money -= rent;
             owner.money += rent;
+            game.gameLog.push(
+                `${player.name} paid ₹${rent} rent to ${owner.name} for ${property.name}`
+            );
 
-            game.gameLog.push(`${player.name} paid ₹${rent} rent to ${owner.name} for ${property.name}`);
-
-            io.to(game.code).emit('rentPaid', {
+            io.to(game.code).emit("rentPaid", {
                 payer: player,
                 receiver: owner,
                 amount: rent,
-                property: property
+                property: property,
             });
         } else {
             game.gameLog.push(`${player.name} cannot afford rent and is bankrupt!`);
             player.bankrupt = true;
 
-            io.to(game.code).emit('playerBankrupt', {
+            io.to(game.code).emit("playerBankrupt", {
                 player: player,
-                game: game
+                game: game,
             });
         }
     }
 
-    const activePlayers = game.players.filter(p => !p.bankrupt);
+    // Check for game end
+    const activePlayers = game.players.filter((p) => !p.bankrupt);
     if (activePlayers.length === 1) {
-        game.gameState = 'finished';
-        io.to(game.code).emit('gameEnded', {
+        game.gameState = "finished";
+        io.to(game.code).emit("gameEnded", {
             winner: activePlayers[0],
-            reason: 'All other players bankrupt'
+            reason: "All other players bankrupt",
         });
     }
+}
+
+function canBuildOnProperty(game, player, propertyPosition) {
+    const property = game.board.find((p) => p.position === propertyPosition);
+
+    // Must be a property (not transport, utility, etc.)
+    if (property.type !== "property") {
+        return { canBuild: false, reason: "Cannot build on this type of space" };
+    }
+
+    // Must own the property
+    if (property.owner !== player.id) {
+        return { canBuild: false, reason: "You do not own this property" };
+    }
+
+    const currentHouses = property.houses || 0;
+
+    // Check if can build hotel (must have exactly 4 houses)
+    if (currentHouses === 4 && !property.hotel) {
+        if (player.money >= property.price) {
+            return { canBuild: true, buildType: "hotel", cost: property.price };
+        } else {
+            return { canBuild: false, reason: "Insufficient funds for hotel" };
+        }
+    }
+
+    // Check if can build house (less than 4 houses and no hotel)
+    if (currentHouses < 4 && !property.hotel) {
+        if (player.money >= property.price) {
+            return { canBuild: true, buildType: "house", cost: property.price };
+        } else {
+            return { canBuild: false, reason: "Insufficient funds for house" };
+        }
+    }
+
+    return { canBuild: false, reason: "Property fully developed" };
+}
+
+function buildOnProperty(game, player, propertyPosition, buildType) {
+    const buildCheck = canBuildOnProperty(game, player, propertyPosition);
+
+    if (!buildCheck.canBuild) {
+        return { success: false, message: buildCheck.reason };
+    }
+
+    const property = game.board.find((p) => p.position === propertyPosition);
+
+    // Deduct money
+    player.money -= buildCheck.cost;
+
+    if (buildType === "house") {
+        if (!property.houses) property.houses = 0;
+        property.houses += 1;
+        game.gameLog.push(
+            `${player.name} built a house on ${property.name} for ₹${buildCheck.cost}`
+        );
+
+        return {
+            success: true,
+            message: `House built on ${property.name}`,
+            buildings: { houses: property.houses, hotel: false },
+        };
+    } else if (buildType === "hotel") {
+        property.houses = 0; // Remove 4 houses
+        property.hotel = true;
+        game.gameLog.push(
+            `${player.name} built a hotel on ${property.name} for ₹${buildCheck.cost}`
+        );
+
+        return {
+            success: true,
+            message: `Hotel built on ${property.name}`,
+            buildings: { houses: 0, hotel: true },
+        };
+    }
+
+    return { success: false, message: "Invalid build type" };
 }
 
 function sendPlayerToJail(game, player) {
@@ -790,9 +1171,9 @@ function sendPlayerToJail(game, player) {
 
     game.gameLog.push(`${player.name} was sent to Detention!`);
 
-    io.to(game.code).emit('playerSentToJail', {
+    io.to(game.code).emit("playerSentToJail", {
         player: player,
-        game: game
+        game: game,
     });
 }
 
@@ -808,17 +1189,18 @@ function handleJailTurn(game, player, dice) {
         const totalRoll = dice[0] + dice[1];
         movePlayer(game, player.id, totalRoll);
 
-        game.gameLog.push(`${player.name} rolled doubles and got out of Detention!`);
+        game.gameLog.push(
+            `${player.name} rolled doubles and got out of Detention!`
+        );
 
-        io.to(game.code).emit('playerLeftJail', {
+        io.to(game.code).emit("playerLeftJail", {
             player: player,
-            method: 'doubles',
+            method: "doubles",
             newPosition: player.position,
-            game: game
+            game: game,
         });
 
         return true; // Player moved
-
     } else {
         // Increment jail turns
         player.jailTurns++;
@@ -828,12 +1210,14 @@ function handleJailTurn(game, player, dice) {
             payJailFine(game, player);
             return false; // Turn ends
         } else {
-            game.gameLog.push(`${player.name} failed to roll doubles. Detention turn ${player.jailTurns}/3`);
+            game.gameLog.push(
+                `${player.name} failed to roll doubles. Detention turn ${player.jailTurns}/3`
+            );
 
-            io.to(game.code).emit('jailTurnFailed', {
+            io.to(game.code).emit("jailTurnFailed", {
                 player: player,
                 turnsRemaining: 3 - player.jailTurns,
-                game: game
+                game: game,
             });
 
             return false; // Turn ends
@@ -851,22 +1235,23 @@ function payJailFine(game, player) {
 
         game.gameLog.push(`${player.name} paid ₹${fine} fine and left Detention`);
 
-        io.to(game.code).emit('playerLeftJail', {
+        io.to(game.code).emit("playerLeftJail", {
             player: player,
-            method: 'fine',
+            method: "fine",
             amount: fine,
-            game: game
+            game: game,
         });
-
     } else {
         // Player can't afford fine - bankruptcy
         player.bankrupt = true;
-        game.gameLog.push(`${player.name} cannot afford Detention fine and is bankrupt!`);
+        game.gameLog.push(
+            `${player.name} cannot afford Detention fine and is bankrupt!`
+        );
 
-        io.to(game.code).emit('playerBankrupt', {
+        io.to(game.code).emit("playerBankrupt", {
             player: player,
-            reason: 'jail_fine',
-            game: game
+            reason: "jail_fine",
+            game: game,
         });
     }
 }
@@ -879,10 +1264,10 @@ function useGetOutOfJailCard(game, player) {
 
         game.gameLog.push(`${player.name} used "Get Out of Detention Free" card`);
 
-        io.to(game.code).emit('playerLeftJail', {
+        io.to(game.code).emit("playerLeftJail", {
             player: player,
-            method: 'card',
-            game: game
+            method: "card",
+            game: game,
         });
 
         return true;
@@ -890,17 +1275,20 @@ function useGetOutOfJailCard(game, player) {
     return false;
 }
 
-
 function endPlayerTurn(game) {
     do {
-        game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
-    } while (game.players[game.currentPlayerIndex].bankrupt && game.players.filter(p => !p.bankrupt).length > 1);
+        game.currentPlayerIndex =
+            (game.currentPlayerIndex + 1) % game.players.length;
+    } while (
+        game.players[game.currentPlayerIndex].bankrupt &&
+        game.players.filter((p) => !p.bankrupt).length > 1
+    );
 
     const nextPlayer = game.players[game.currentPlayerIndex];
 
-    io.to(game.code).emit('turnEnded', {
+    io.to(game.code).emit("turnEnded", {
         nextPlayer: nextPlayer,
-        game: game
+        game: game,
     });
 }
 
