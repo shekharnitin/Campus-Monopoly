@@ -528,10 +528,29 @@ function executeCard(game, player, card, deckType) {
             break;
 
         case "repair":
-            const repairCost =
-                (player.houses || 0) * card.house + (player.hotels || 0) * card.hotel;
+            // Calculate total houses and hotels owned by player
+            let totalHouses = 0;
+            let totalHotels = 0;
+
+            // Loop through all board properties to count player's buildings
+            game.board.forEach(property => {
+                if (property.owner === player.id && property.type === 'property') {
+                    totalHouses += property.houses || 0;
+                    if (property.hotel) {
+                        totalHotels += 1;
+                    }
+                }
+            });
+
+            const repairCost = totalHouses * card.house + totalHotels * card.hotel;
             player.money -= repairCost;
-            message += ` Total cost: ₹${repairCost}`;
+            message += ` Total cost: ₹${repairCost} (${totalHouses} houses × ₹${card.house} + ${totalHotels} hotels × ₹${card.hotel})`;
+
+            // Check for bankruptcy
+            if (player.money < 0) {
+                player.bankrupt = true;
+                message += ` ${player.name} is bankrupt!`;
+            }
             break;
 
         case "getoutofjail":
