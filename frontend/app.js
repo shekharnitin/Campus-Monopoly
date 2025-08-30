@@ -1,8 +1,16 @@
 // Campus Monopoly Game Client - Enhanced Version
-const BACKEND_URL = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://campus-monopoly.onrender.com/';
+const BACKEND_URL = (() => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3001';
+    } else {
+        // Use the same origin for production deployments
+        return window.location.origin;
+    }
+})();
+
 let socket = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
 let gameState = {
     currentPlayer: null,
     isHost: false,
@@ -19,7 +27,7 @@ const campusBuildings = [
     { "name": "Community Chest", "type": "community_chest", "position": 2 },
     { "name": "Heritage Building", "type": "property", "position": 3, "price": 80, "color": "brown", "rent": [4, 20, 60, 180, 320, 450] },
     { "name": "Income Tax", "type": "tax", "position": 4, "amount": 200 },
-    { "name": "RD", "type": "property", "position": 5, "price": 200, "color": "blue", "rent": [8, 40, 100, 300, 450, 600]},
+    { "name": "RD", "type": "property", "position": 5, "price": 200, "color": "blue", "rent": [8, 40, 100, 300, 450, 600] },
     { "name": "NLHC", "type": "property", "position": 6, "price": 100, "color": "light_blue", "rent": [6, 30, 90, 270, 400, 550] },
     { "name": "Chance", "type": "chance", "position": 7 },
     { "name": "OAT", "type": "property", "position": 8, "price": 120, "color": "blue", "rent": [8, 40, 100, 300, 450, 600] },
@@ -57,33 +65,77 @@ const campusBuildings = [
 ];
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeUI();
-    connectToServer();
+document.addEventListener('DOMContentLoaded', function () {
+    // Wait a bit before connecting to ensure DOM is fully loaded
+    setTimeout(() => {
+        initializeUI();
+        connectToServer();
+    }, 100);
 });
 
 function connectToServer() {
-    socket = io(BACKEND_URL);
+    if (socket && socket.connected) {
+        console.log('Already connected to server');
+        return;
+    }
+
+    // Check if io is available
+    if (typeof io === 'undefined') {
+        console.error('Socket.IO not loaded. Make sure the script tag is correct.');
+        showStatus('Socket.IO library not loaded. Please refresh the page.', 'error');
+        return;
+    }
+
+    console.log(`Attempting to connect to: ${BACKEND_URL}`);
+    
+    socket = io(BACKEND_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 10000,
+        reconnection: true,
+        reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 5000,
+        forceNew: true
+    });
 
     socket.on('connect', () => {
-        console.log('Connected to server');
+        console.log('Successfully connected to server');
+        reconnectAttempts = 0;
         showStatus('Connected to server', 'success');
     });
 
-    socket.on('disconnect', () => {
-        console.log('Disconnected from server');
-        showStatus('Disconnected from server', 'error');
+    socket.on('disconnect', (reason) => {
+        console.log('Disconnected from server:', reason);
+        showStatus(`Disconnected: ${reason}`, 'warning');
+
+        // Don't auto-reconnect if it was intentional
+        if (reason === 'io client disconnect') {
+            return;
+        }
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        reconnectAttempts++;
+        
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            showStatus('Failed to connect to server. Please check if the server is running on port 3001.', 'error');
+        } else {
+            showStatus(`Connection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} failed. Retrying...`, 'warning');
+        }
     });
 
     socket.on('error', (error) => {
         console.error('Socket error:', error);
-        showStatus(error.message || 'Server error', 'error');
+        showStatus(error.message || 'Server error occurred', 'error');
     });
 
     setupSocketListeners();
 }
 
 function setupSocketListeners() {
+    if (!socket) return;
+    
     socket.on('gameCreated', handleGameCreated);
     socket.on('gameJoined', handleGameJoined);
     socket.on('playerJoined', handlePlayerJoined);
@@ -101,6 +153,8 @@ function setupSocketListeners() {
     socket.on('jailTurnFailed', handleJailTurnFailed);
     socket.on('buildingOffer', handleBuildingOffer);
     socket.on('propertyBuilt', handlePropertyBuilt);
+    socket.on('gameStateChanged', handleGameStateChanged);
+    socket.on('playerKicked', handlePlayerKicked);
 }
 
 function initializeUI() {
@@ -115,8 +169,13 @@ function initializeUI() {
 
     // Host controls
     document.getElementById('startGameBtn').addEventListener('click', startGame);
-    document.getElementById('endGameBtn').addEventListener('click', endGame);
-    document.getElementById('copyCodeBtn').addEventListener('click', copyGameCode);
+    document.getElementById('endGameHostBtn').addEventListener('click', endGame);
+    
+    // Add null check for copyCodeBtn
+    const copyCodeBtn = document.getElementById('copyCodeBtn');
+    if (copyCodeBtn) {
+        copyCodeBtn.addEventListener('click', copyGameCode);
+    }
 
     // Game controls
     document.getElementById('rollDiceBtn').addEventListener('click', rollDice);
@@ -127,6 +186,23 @@ function initializeUI() {
     // Initialize board
     createBoard();
     createPropertyInfoCard();
+
+    // Add null check for spectator copy button
+    const copySpectatorCodeBtn = document.getElementById('copySpectatorCodeBtn');
+    if (copySpectatorCodeBtn) {
+        copySpectatorCodeBtn.addEventListener('click', copySpectatorGameCode);
+    }
+}
+
+function copyGameCode() {
+    const gameCode = gameState.gameCode || document.getElementById('hostGameCode').textContent;
+    if (gameCode && gameCode !== '------') {
+        navigator.clipboard.writeText(gameCode).then(() => {
+            showStatus('Game code copied to clipboard!', 'success');
+        }).catch(() => {
+            showStatus('Failed to copy game code', 'error');
+        });
+    }
 }
 
 function updateGameState(newState) {
@@ -140,37 +216,45 @@ function updateUI() {
     updatePlayersList(gameState.players || []);
     updateSidebar();
     updateJailCardCounter();
+    updateCurrentTurnDisplay();
 }
 
 function rollDice() {
-    if (socket && socket.connected) {
-        // Add rolling animation
-        const dice1El = document.getElementById('dice1');
-        const dice2El = document.getElementById('dice2');
-        
+    if (!socket || !socket.connected) {
+        showStatus('Connection lost. Please refresh the page.', 'error');
+        return;
+    }
+    
+    if (gameState.gamePhase !== 'playing') {
+        showStatus('Game is not in progress', 'warning');
+        return;
+    }
+
+    // Add rolling animation
+    const dice1El = document.getElementById('dice1');
+    const dice2El = document.getElementById('dice2');
+
+    if (dice1El && dice2El) {
         dice1El.classList.add('rolling');
         dice2El.classList.add('rolling');
-        
+
         setTimeout(() => {
             dice1El.classList.remove('rolling');
             dice2El.classList.remove('rolling');
         }, 1000);
-        
-        socket.emit('rollDice');
-    } else {
-        // Demo mode fallback
-        const dice1 = Math.floor(Math.random() * 6) + 1;
-        const dice2 = Math.floor(Math.random() * 6) + 1;
-        updateDiceDisplay(dice1, dice2);
-        showStatus(`Rolled ${dice1} + ${dice2} = ${dice1 + dice2}`, 'info');
     }
+
+    socket.emit('rollDice');
 }
 
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.add('hidden');
     });
-    document.getElementById(screenId).classList.remove('hidden');
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.remove('hidden');
+    }
 }
 
 function showMainMenu() {
@@ -179,22 +263,28 @@ function showMainMenu() {
 }
 
 function showHostGame() {
-    if (socket && socket.connected) {
-        const hostName = prompt('Enter your name as host:');
-        if (hostName) {
-            socket.emit('createGame', { hostName: hostName });
-        }
-    } else {
-        showStatus('Backend not available. Cannot host multiplayer game.', 'error');
+    if (!socket || !socket.connected) {
+        showStatus('Connection lost. Please refresh and try again.', 'error');
+        return;
     }
+
+    const hostName = prompt('Enter your name as host:');
+    if (!hostName || hostName.trim().length < 2) {
+        showStatus('Please enter a valid name (at least 2 characters)', 'error');
+        return;
+    }
+
+    console.log('Sending createGame event:', { hostName: hostName.trim() });
+    socket.emit('createGame', { hostName: hostName.trim() });
 }
 
 function showJoinGame() {
-    if (socket && socket.connected) {
-        showScreen('joinGameScreen');
-    } else {
-        showStatus('Backend not available. Cannot join multiplayer game.', 'error');
+    if (!socket || !socket.connected) {
+        showStatus('Connection lost. Please refresh and try again.', 'error');
+        return;
     }
+
+    showScreen('joinGameScreen');
 }
 
 function showRules() {
@@ -223,48 +313,63 @@ Good luck and have fun!`);
 }
 
 function joinGame() {
-    const gameCode = document.getElementById('gameCodeInput').value.toUpperCase();
-    const playerName = document.getElementById('playerNameInput').value;
+    const gameCode = document.getElementById('gameCodeInput').value.trim().toUpperCase();
+    const playerName = document.getElementById('playerNameInput').value.trim();
 
-    if (!gameCode || !playerName) {
-        showStatus('Please enter both game code and your name', 'error');
+    // Input validation
+    if (!gameCode || gameCode.length !== 6) {
+        showStatus('Please enter a valid 6-character game code', 'error');
         return;
     }
 
-    if (socket && socket.connected) {
-        socket.emit('joinGame', { gameCode, playerName });
-    } else {
-        showStatus('Backend not available', 'error');
+    if (!playerName || playerName.length < 2) {
+        showStatus('Please enter a valid name (at least 2 characters)', 'error');
+        return;
     }
+
+    if (playerName.length > 20) {
+        showStatus('Name must be 20 characters or less', 'error');
+        return;
+    }
+
+    if (!socket || !socket.connected) {
+        showStatus('Connection lost. Please refresh and try again.', 'error');
+        return;
+    }
+
+    socket.emit('joinGame', { gameCode, playerName });
 }
 
 function startGame() {
-    if (socket && socket.connected) {
-        socket.emit('startGame');
+    if (!socket || !socket.connected) {
+        showStatus('Connection lost. Cannot start game.', 'error');
+        return;
     }
+    
+    console.log('Starting game...');
+    socket.emit('startGame');
 }
 
-function endGame() {
-    if (confirm('Are you sure you want to end the game?')) {
-        showMainMenu();
-    }
-}
 
-function copyGameCode() {
-    const gameCode = document.getElementById('hostGameCode').textContent;
-    navigator.clipboard.writeText(gameCode).then(() => {
-        showStatus('Game code copied to clipboard!', 'success');
-    });
+
+function copySpectatorGameCode() {
+    const gameCode = document.getElementById('spectatorGameCode').textContent;
+    if (gameCode) {
+        navigator.clipboard.writeText(gameCode).then(() => {
+            showStatus('Game code copied to clipboard!', 'success');
+        }).catch(() => {
+            showStatus('Failed to copy game code', 'error');
+        });
+    }
 }
 
 function buyProperty() {
-    if (socket && socket.connected) {
-        socket.emit('buyProperty');
-    } else {
-        showStatus('Property purchased in demo mode', 'success');
-        document.getElementById('buyPropertyBtn').style.display = 'none';
-        document.getElementById('endTurnBtn').style.display = 'inline-block';
+    if (!socket || !socket.connected) {
+        showStatus('Connection lost. Please refresh the page.', 'error');
+        return;
     }
+
+    socket.emit('buyProperty');
 }
 
 function sellProperty() {
@@ -272,29 +377,31 @@ function sellProperty() {
 }
 
 function endTurn() {
-    if (socket && socket.connected) {
-        socket.emit('endTurn');
-    } else {
-        // Demo mode
-        document.getElementById('rollDiceBtn').disabled = true;
-        document.getElementById('endTurnBtn').style.display = 'none';
-        showStatus('Turn ended in demo mode', 'info');
+    if (!socket || !socket.connected) {
+        showStatus('Connection lost. Please refresh the page.', 'error');
+        return;
     }
+    socket.emit('endTurn');
 }
 
 // Socket event handlers
 function handleGameCreated(data) {
+    console.log('Game created:', data);
     gameState.isHost = true;
     gameState.gameCode = data.gameCode;
     gameState.gamePhase = 'waiting';
-    gameState.players = data.game.players;
+    gameState.players = data.game?.players || [];
 
     document.getElementById('hostGameCode').textContent = data.gameCode;
     showScreen('hostDashboard');
-    updatePlayersList(data.game.players);
+    updatePlayersList(gameState.players);
+    updatePlayerCount();
+
+    showStatus('Game created! You are now the host/spectator. Share the code for players to join.', 'success');
 }
 
 function handleGameJoined(data) {
+    console.log('Joined game:', data);
     gameState.isHost = false;
     gameState.gameCode = data.game.code;
     gameState.currentPlayer = data.player;
@@ -305,14 +412,51 @@ function handleGameJoined(data) {
 
     showStatus(`Joined game ${data.game.code} successfully!`, 'success');
     showScreen('playerWaiting');
+
+    updatePlayersList(gameState.players);
+    updatePlayerCount();
 }
 
 function handlePlayerJoined(data) {
-    if (gameState.isHost && data.game) {
+    console.log('Player joined event received:', data);
+    // Update for both host and regular players
+    if (data.game && data.game.players) {
         gameState.players = data.game.players;
         updatePlayersList(data.game.players);
+        
+        // Show notification about new player
+        if (data.player && data.player.name) {
+            showStatus(`${data.player.name} joined the game`, 'success');
+        }
+    }
+    
+    // Update player count displays
+    updatePlayerCount();
+}
+function updatePlayerCount() {
+    const playerCountElements = document.querySelectorAll('#playerCount, #waitingPlayerCount');
+    
+    playerCountElements.forEach(element => {
+        if (element) {
+            element.textContent = gameState.players.length;
+        }
+    });
+    
+    // Update start button availability for host
+    if (gameState.isHost) {
+        const startBtn = document.getElementById('startGameBtn');
+        if (startBtn) {
+            if (gameState.players.length >= 2) {
+                startBtn.disabled = false;
+                startBtn.textContent = `Start Game (${gameState.players.length} players)`;
+            } else {
+                startBtn.disabled = true;
+                startBtn.textContent = `Start Game (Need ${2 - gameState.players.length} more players)`;
+            }
+        }
     }
 }
+
 
 function handleGameStarted(data) {
     gameState.players = data.game.players;
@@ -320,11 +464,135 @@ function handleGameStarted(data) {
     gameState.board = data.game.board;
     gameState.gamePhase = 'playing';
 
-    showScreen('gameBoard');
+    if (gameState.isHost) {
+        // Host sees spectator view
+        showScreen('hostSpectatorView');
+        document.getElementById('spectatorGameCode').textContent = gameState.gameCode;
+        updateHostDashboard();
+        
+        // Copy board to spectator view
+        createSpectatorBoard();
+    } else {
+        // Players see normal game board
+        showScreen('gameBoard');
+    }
     updateGameBoard();
     updatePlayerInfo();
     updatePlayerPieces();
     updateSidebar();
+    updateCurrentTurnDisplay();
+}
+
+function createSpectatorBoard() {
+    const spectatorBoardSpaces = document.getElementById('spectatorBoardSpaces');
+    if (!spectatorBoardSpaces) return;
+
+    spectatorBoardSpaces.innerHTML = '';
+
+    campusBuildings.forEach((building, index) => {
+        const space = document.createElement('div');
+        space.className = `board-space ${building.color || building.type}`;
+        space.setAttribute('data-position', index);
+        space.innerHTML = `
+            <div class="space-name">${building.name}</div>
+            ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
+        `;
+        space.id = `spectator-space-${index}`;
+
+        // Position spaces in rectangle (Monopoly board layout)
+        let x, y;
+        if (index <= 10) {
+            x = 90 - (index * 8);
+            y = 90;
+        } else if (index <= 20) {
+            x = 10;
+            y = 90 - ((index - 10) * 8);
+        } else if (index <= 30) {
+            x = 10 + ((index - 20) * 8);
+            y = 10;
+        } else {
+            x = 90;
+            y = 10 + ((index - 30) * 8);
+        }
+
+        space.style.left = `${x}%`;
+        space.style.top = `${y}%`;
+        space.style.width = '80px';
+        space.style.height = '60px';
+
+        spectatorBoardSpaces.appendChild(space);
+    });
+}
+
+function createBoard() {
+    const boardSpaces = document.getElementById('boardSpaces');
+    if (!boardSpaces) return;
+
+    boardSpaces.innerHTML = '';
+
+    campusBuildings.forEach((building, index) => {
+        const space = document.createElement('div');
+        space.className = `board-space ${building.color || building.type}`;
+        space.setAttribute('data-position', index);
+        space.innerHTML = `
+            <div class="space-name">${building.name}</div>
+            ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
+        `;
+        space.id = `space-${index}`;
+
+        // Position spaces in rectangle (Monopoly board layout)
+        let x, y;
+        if (index <= 10) {
+            // Bottom row (right to left)
+            x = 90 - (index * 8);
+            y = 90;
+        } else if (index <= 20) {
+            // Left column (bottom to top)
+            x = 10;
+            y = 90 - ((index - 10) * 8);
+        } else if (index <= 30) {
+            // Top row (left to right)
+            x = 10 + ((index - 20) * 8);
+            y = 10;
+        } else {
+            // Right column (top to bottom)
+            x = 90;
+            y = 10 + ((index - 30) * 8);
+        }
+
+        space.style.left = `${x}%`;
+        space.style.top = `${y}%`;
+        space.style.width = '80px';
+        space.style.height = '60px';
+
+        // Add hover events for property info
+        if (building.type === 'property' || building.type === 'transport' || building.type === 'utility') {
+            space.addEventListener('mouseenter', (e) => showPropertyInfo(e, building, index));
+            space.addEventListener('mouseleave', hidePropertyInfo);
+        }
+
+        boardSpaces.appendChild(space);
+    });
+}
+
+function handleGameStateChanged(data) {
+    gameState.gamePhase = data.gameState;
+    showStatus(data.message, 'info');
+    updateHostDashboard();
+}
+
+function kickPlayer(playerId) {
+    if (!gameState.isHost || !socket || !socket.connected) return;
+    
+    if (confirm('Are you sure you want to kick this player?')) {
+        socket.emit('kickPlayer', { playerId });
+    }
+}
+
+
+function handlePlayerKicked(data) {
+    showStatus(data.reason, 'warning');
+    setTimeout(showMainMenu, 2000);
 }
 
 function handleDiceRolled(data) {
@@ -334,7 +602,7 @@ function handleDiceRolled(data) {
     // Update game state with new player positions
     gameState.players = data.game.players;
     gameState.currentPlayer = data.player;
-    
+
     // Animate player movement
     animatePlayerMovement(data.player, data.newPosition);
 
@@ -345,22 +613,22 @@ function handleDiceRolled(data) {
     }
 
     // Show property action buttons if landed on purchasable property
-    
     if (['property', 'transport', 'utility'].includes(property.type) && !property.owner) {
         document.getElementById('buyPropertyBtn').style.display = 'inline-block';
     }
 
     document.getElementById('endTurnBtn').style.display = 'inline-block';
     updateSidebar();
+    updateCurrentTurnDisplay(); 
 }
 
 function handlePropertyPurchased(data) {
     addToGameLog(`${data.player.name} bought ${data.property.name} for ₹${data.property.price}`);
-    
+
     // Update game state
     gameState.players = data.game.players;
     gameState.board = data.game.board;
-    
+
     updatePlayerInfo();
     updateGameBoard();
     updateSidebar();
@@ -369,7 +637,7 @@ function handlePropertyPurchased(data) {
 
 function handleRentPaid(data) {
     addToGameLog(`${data.payer.name} paid ₹${data.amount} rent to ${data.receiver.name}`);
-    
+
     // Update game state
     gameState.players = data.game.players;
     updatePlayerInfo();
@@ -378,7 +646,7 @@ function handleRentPaid(data) {
 
 function handleTaxPaid(data) {
     addToGameLog(`${data.player.name} paid ₹${data.amount} ${data.property.name}`);
-    
+
     // Update game state
     gameState.players = data.game.players;
     updatePlayerInfo();
@@ -387,10 +655,10 @@ function handleTaxPaid(data) {
 
 function handleCardDrawn(data) {
     addToGameLog(data.result);
-    
+
     // Show card modal/popup
     showCardModal(data.card, data.deckType);
-    
+
     // Update game state
     gameState.players = data.game.players;
     gameState.currentPlayer = data.player;
@@ -403,16 +671,16 @@ function showCardModal(card, deckType) {
     const modal = document.getElementById('cardModal');
     const cardType = document.getElementById('cardType');
     const cardMessage = document.getElementById('cardMessage');
-    
+
     // Set card type and message
     cardType.textContent = deckType === 'chance' ? 'Chance Card' : 'Community Chest Card';
     cardMessage.textContent = card.message;
-    
+
     // Show modal
     modal.style.display = 'block';
-    
+
     // Close modal when clicking outside
-    modal.onclick = function(event) {
+    modal.onclick = function (event) {
         if (event.target === modal) {
             closeCardModal();
         }
@@ -423,12 +691,12 @@ function closeCardModal() {
     document.getElementById('cardModal').style.display = 'none';
 }
 
-
 function handleTurnEnded(data) {
     gameState.currentPlayer = data.nextPlayer;
     gameState.players = data.game.players;
     updatePlayerInfo();
     updateSidebar();
+    updateCurrentTurnDisplay(); 
 
     // Hide action buttons
     document.getElementById('buyPropertyBtn').style.display = 'none';
@@ -447,19 +715,30 @@ function handleGameEnded(data) {
 }
 
 function handlePlayerLeft(data) {
-    if (gameState.isHost) {
-        showStatus(`Player left the game`, 'info');
-    }
+    // Find the player who left by their ID
+    const leftPlayer = gameState.players.find(p => p.id === data.playerId);
+    const playerName = leftPlayer ? leftPlayer.name : 'A player';
+
+    // Show a more specific status message
+    showStatus(`${playerName} left the game (${data.reason})`, 'warning');
+
+    // Remove the player from the local gameState.players array
+    gameState.players = gameState.players.filter(p => p.id !== data.playerId);
+
+    // Now, update all UI components that show the player list
+    updatePlayersList(gameState.players);
+    updatePlayerCount();
+    updateSidebar(); // This ensures the in-game list is also updated
 }
 
 function handlePlayerSentToJail(data) {
     addToGameLog(`${data.player.name} was sent to Detention!`);
-    
+
     // Update game state
     gameState.players = data.game.players;
     updatePlayerInfo();
     updateSidebar();
-    
+
     // Show jail options if it's current player
     if (data.player.socketId === socket.id) {
         showJailOptions();
@@ -468,7 +747,7 @@ function handlePlayerSentToJail(data) {
 
 function handlePlayerLeftJail(data) {
     let message = `${data.player.name} left Detention`;
-    
+
     switch (data.method) {
         case 'doubles':
             message += ' by rolling doubles!';
@@ -480,20 +759,20 @@ function handlePlayerLeftJail(data) {
             message += ' using "Get Out of Detention Free" card!';
             break;
     }
-    
+
     addToGameLog(message);
-    
+
     // Update game state
     gameState.players = data.game.players;
     updatePlayerInfo();
     updateSidebar();
-    
+
     hideJailOptions();
 }
 
 function handleJailTurnFailed(data) {
     addToGameLog(`${data.player.name} failed to roll doubles. ${data.turnsRemaining} turns remaining in Detention.`);
-    
+
     // Update game state
     gameState.players = data.game.players;
     updatePlayerInfo();
@@ -526,80 +805,125 @@ function useJailCard() {
     }
 }
 
-
 // UI update functions
-function updatePlayersList(players) {
-    const playersList = document.getElementById('playersList');
-    const playerCount = document.getElementById('playerCount');
-    const startBtn = document.getElementById('startGameBtn');
+function updateHostDashboard() {
+    if (!gameState.isHost) return;
 
-    playerCount.textContent = players.length;
+    const hostControls = document.getElementById('hostControls');
+    if (!hostControls) return;
 
-    if (players.length === 0) {
-        playersList.innerHTML = '<div class="text-muted">No players joined yet...</div>';
-        startBtn.disabled = true;
-    } else {
-        playersList.innerHTML = players.map(player => 
-            `<div class="player-card">
-                <span>${player.token} ${player.name}</span>
-                <span>₹${player.money}</span>
-            </div>`
-        ).join('');
+    let controlsHTML = `
+    <div class="host-control-panel">
+      <h3>Host Controls</h3>
+      <div class="control-buttons">
+        <button id="pauseGameBtn" class="btn btn--warning">Pause/Resume</button>
+        <button id="spectatorEndGameBtn" class="btn btn--danger">End Game</button>
+      </div>
+      
+      <div class="game-stats">
+        <p><strong>Players:</strong> ${gameState.players.length}</p>
+        <p><strong>Game Phase:</strong> ${gameState.gamePhase}</p>
+        <p><strong>Current Turn:</strong> ${getCurrentPlayerName()}</p>
+      </div>
+    </div>
+  `;
 
-        startBtn.disabled = players.length < 2;
+    hostControls.innerHTML = controlsHTML;
+
+    // Add event listeners to the NEWLY created buttons
+    const pauseBtn = document.getElementById('pauseGameBtn');
+    const endBtn = document.getElementById('spectatorEndGameBtn');
+    
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', pauseGame);
+    }
+    
+    if (endBtn) {
+        endBtn.addEventListener('click', endGame);
     }
 }
 
-function createBoard() {
-    const boardSpaces = document.getElementById('boardSpaces');
-    if (!boardSpaces) return;
-
-    boardSpaces.innerHTML = '';
-
-    campusBuildings.forEach((building, index) => {
-        const space = document.createElement('div');
-        space.className = `board-space ${building.color || building.type}`;
-        space.setAttribute('data-position', index); 
-        space.innerHTML = `
-            <div class="space-name">${building.name}</div>
-            ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
-        `;
-        space.id = `space-${index}`;
-
-        // Position spaces in rectangle (Monopoly board layout)
-        let x, y;
-        if (index <= 10) {
-            // Bottom row (right to left)
-            x = 90 - (index * 8);
-            y = 90;
-        } else if (index <= 20) {
-            // Left column (bottom to top)
-            x = 10;
-            y = 90 - ((index - 10) * 8);
-        } else if (index <= 30) {
-            // Top row (left to right)
-            x = 10 + ((index - 20) * 8);
-            y = 10;
-        } else {
-            // Right column (top to bottom)
-            x = 90;
-            y = 10 + ((index - 30) * 8);
-        }
-
-        space.style.left = `${x}%`;
-        space.style.top = `${y}%`;
-        space.style.width = '80px';  
-        space.style.height = '60px';
-
-        // Add hover events for property info
-        if (building.type === 'property' || building.type === 'transport' || building.type === 'utility') {
-            space.addEventListener('mouseenter', (e) => showPropertyInfo(e, building, index));
-            space.addEventListener('mouseleave', hidePropertyInfo);
-        }
-
-        boardSpaces.appendChild(space);
-    });
+function getCurrentPlayerName() {
+    if (!gameState.players || gameState.players.length === 0) return 'None';
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer?.id);
+    return currentPlayer ? currentPlayer.name : 'Unknown';
 }
+
+function updateCurrentTurnDisplay() {
+    // Update current turn display in spectator view
+    const currentTurnPlayerEl = document.getElementById('currentTurnPlayer');
+    if (currentTurnPlayerEl && gameState.isHost) {
+        const currentPlayerName = getCurrentPlayerName();
+        if (gameState.currentPlayer && currentPlayerName !== 'None' && currentPlayerName !== 'Unknown') {
+            currentTurnPlayerEl.innerHTML = `${gameState.currentPlayer.token} ${currentPlayerName}`;
+        } else {
+            currentTurnPlayerEl.textContent = 'Waiting...';
+        }
+    }
+}
+
+function pauseGame() {
+    if (socket && socket.connected && gameState.isHost) {
+        socket.emit('pauseGame');
+    }
+}
+
+function endGame() {
+    if (confirm('Are you sure you want to end the game for everyone?')) {
+        if (socket && socket.connected && gameState.isHost) {
+            // Send the end game event to the server
+            socket.emit('endGameByHost');
+        } else {
+            // Failsafe in case of disconnection or not being host
+            showStatus('Could not end game. You might be disconnected.', 'error');
+            // Go to menu anyway as a fallback for the host
+            showMainMenu();
+        }
+    }
+}
+
+function updatePlayersList(players) {
+    const hostPlayersList = document.getElementById('playersList');
+    if (hostPlayersList) {
+        updatePlayerListElement(hostPlayersList, players);
+    }
+    
+    // Update waiting screen player list
+    const waitingPlayersList = document.getElementById('waitingPlayersList');
+    if (waitingPlayersList) {
+        updatePlayerListElement(waitingPlayersList, players);
+    }
+    
+    // Update spectator player list
+    const spectatorPlayersList = document.getElementById('spectatorPlayersList');
+    if (spectatorPlayersList) {
+        updatePlayerListElement(spectatorPlayersList, players);
+    }
+}
+
+function updatePlayerListElement(listElement, players) {
+    if (!listElement) return;
+    
+    if (players.length === 0) {
+        listElement.innerHTML = '<div class="text-muted">Waiting for players to join...</div>';
+        return;
+    }
+    
+    listElement.innerHTML = players.map(player => `
+        <div class="player-card">
+            <div class="player-info">
+                <span class="player-token">${player.token}</span>
+                <span class="player-name">${player.name}</span>
+            </div>
+            ${gameState.isHost && gameState.gamePhase === 'waiting' ? 
+                `<button class="btn btn--small btn--danger" onclick="kickPlayer('${player.id}')">Kick</button>` : 
+                ''
+            }
+        </div>
+    `).join('');
+}
+
+
 
 function createPropertyInfoCard() {
     const infoCard = document.createElement('div');
@@ -611,9 +935,9 @@ function createPropertyInfoCard() {
 function showPropertyInfo(event, building, position) {
     const infoCard = document.getElementById('property-info-card');
     const boardProperty = gameState.board && gameState.board[position] ? gameState.board[position] : building;
-    
+
     let content = `<h3>${building.name}</h3>`;
-    
+
     if (building.type === 'property') {
         content += `
             <div class="property-price">Price: ₹${building.price}</div>
@@ -648,45 +972,45 @@ function showPropertyInfo(event, building, position) {
             </div>
         `;
     }
-    
+
     if (boardProperty.owner) {
         const owner = gameState.players.find(p => p.id === boardProperty.owner);
         if (owner) {
             content += `<div class="property-owner">Owner: ${owner.name} ${owner.token}</div>`;
         }
     }
-    
+
     infoCard.innerHTML = content;
     infoCard.classList.remove('hidden');
-    
+
     // Position the card above the property space
     const rect = event.target.getBoundingClientRect();
-    
-    
+
     // Calculate position to center the card above the property
     let left = rect.left + (rect.width / 2) - (200 / 2); // 200px is approximate card width
     let top = rect.top - 200; // Position above the property with 10px gap
-    
+
     // Ensure the card stays within viewport
     const viewportWidth = window.innerWidth;
-    
-    
+
     // Adjust horizontal position if card would go off screen
     if (left < 10) left = 10;
     if (left + 200 > viewportWidth - 10) left = viewportWidth - 210;
-    
+
     // If card would go above viewport, show it below the property instead
     if (top < 10) {
         top = 10;
     }
-    
+
     infoCard.style.left = `${left}px`;
     infoCard.style.top = `${top}px`;
 }
 
 function hidePropertyInfo() {
     const infoCard = document.getElementById('property-info-card');
-    infoCard.classList.add('hidden');
+    if (infoCard) {
+        infoCard.classList.add('hidden');
+    }
 }
 
 function handleBuildingOffer(data) {
@@ -695,7 +1019,7 @@ function handleBuildingOffer(data) {
 
 function handlePropertyBuilt(data) {
     addToGameLog(`${data.player.name} built a ${data.buildType} on ${data.property.name}`);
-    
+
     // Update game state
     gameState.players = data.game.players;
     gameState.board = data.game.board;
@@ -709,26 +1033,31 @@ function showBuildingModal(property, buildType, cost) {
     const modalTitle = document.getElementById('buildingModalTitle');
     const modalMessage = document.getElementById('buildingModalMessage');
     const buildBtn = document.getElementById('buildConfirmBtn');
-    
+
+    if (!modal || !modalTitle || !modalMessage || !buildBtn) return;
+
     modalTitle.textContent = `Build on ${property.name}`;
-    
+
     if (buildType === 'hotel') {
         modalMessage.textContent = `Upgrade to Hotel for ₹${cost}? (Removes 4 Houses)`;
     } else {
         const currentHouses = property.houses || 0;
         modalMessage.textContent = `Build House ${currentHouses + 1} for ₹${cost}?`;
     }
-    
+
     buildBtn.onclick = () => {
         buildProperty(property.position, buildType);
         closeBuildingModal();
     };
-    
+
     modal.style.display = 'block';
 }
 
 function closeBuildingModal() {
-    document.getElementById('buildingModal').style.display = 'none';
+    const modal = document.getElementById('buildingModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 function buildProperty(propertyPosition, buildType) {
@@ -760,35 +1089,32 @@ function updateJailCardCounter() {
     counterEl.textContent = count;
 }
 
-
-
 function updateGameBoard() {
     if (!gameState.board) return;
-    
+
     gameState.board.forEach(property => {
         const spaceElement = document.querySelector(`[data-position="${property.position}"]`);
         if (spaceElement && property.type === 'property') {
             // Clear existing building classes
             spaceElement.classList.remove('has-houses', 'has-hotel');
             spaceElement.removeAttribute('data-houses');
-            
+
             if (property.hotel) {
                 spaceElement.classList.add('has-hotel');
-                // Add text-hotel class if you prefer "H" over emoji
-                // spaceElement.classList.add('text-hotel');
             } else if (property.houses && property.houses > 0) {
                 spaceElement.classList.add('has-houses');
                 spaceElement.setAttribute('data-houses', property.houses);
             }
         }
     });
+
     // Update board with current game state
     if (gameState.board) {
         gameState.board.forEach((space, index) => {
             const spaceElement = document.getElementById(`space-${index}`);
             if (spaceElement && space.owner) {
                 spaceElement.classList.add('owned');
-                
+
                 // Add owner indicator
                 const owner = gameState.players.find(p => p.id === space.owner);
                 if (owner) {
@@ -800,31 +1126,50 @@ function updateGameBoard() {
     updatePlayerPieces();
 }
 
+/**
+ * Creates and appends a player piece to a target board space element.
+ * @param {HTMLElement} targetSpace The board space div to add the piece to.
+ * @param {object} player The player object for whom to create the piece.
+ */
+function createAndAppendPiece(targetSpace, player) {
+    if (!targetSpace) return;
+
+    const piece = document.createElement('div');
+    piece.className = 'player-piece';
+    piece.textContent = player.token;
+    piece.style.backgroundColor = getPlayerColor(player.token);
+    piece.title = player.name;
+
+    // Add a class if the player is in jail for special styling
+    if (player.inJail) {
+        piece.classList.add('in-jail');
+    }
+
+    // Position multiple pieces on the same space so they don't overlap
+    const existingPieces = targetSpace.querySelectorAll('.player-piece').length;
+    piece.style.left = `${5 + (existingPieces * 15)}px`;
+    piece.style.top = `${5}px`;
+
+    targetSpace.appendChild(piece);
+}
+
 function updatePlayerPieces() {
-    // Remove all existing player pieces
+     // Remove all existing player pieces from both boards
     document.querySelectorAll('.player-piece').forEach(piece => piece.remove());
-    
+
     if (!gameState.players) return;
-    
-    // Add player pieces to their current positions
-    gameState.players.forEach((player, playerIndex) => {
+
+    // Add player pieces to their current positions on BOTH boards
+    gameState.players.forEach(player => {
         if (player.bankrupt) return;
-        
-        const spaceElement = document.getElementById(`space-${player.position}`);
-        if (spaceElement) {
-            const piece = document.createElement('div');
-            piece.className = 'player-piece';
-            piece.textContent = player.token;
-            piece.style.backgroundColor = getPlayerColor(player.token);
-            piece.title = player.name;
-            
-            // Position multiple pieces on the same space
-            const existingPieces = spaceElement.querySelectorAll('.player-piece');
-            piece.style.left = `${5 + (existingPieces.length * 15)}px`;
-            piece.style.top = `${5}px`;
-            
-            spaceElement.appendChild(piece);
-        }
+
+        // Find the space on the regular game board
+        const regularBoardSpace = document.getElementById(`space-${player.position}`);
+        createAndAppendPiece(regularBoardSpace, player);
+
+        // Find the space on the host's spectator board
+        const spectatorBoardSpace = document.getElementById(`spectator-space-${player.position}`);
+        createAndAppendPiece(spectatorBoardSpace, player);
     });
 }
 
@@ -835,11 +1180,11 @@ function animatePlayerMovement(player, newPosition) {
             piece.remove();
         }
     });
-    
+
     // Add piece to new position with animation
     setTimeout(() => {
         updatePlayerPieces();
-        
+
         // Highlight the new position briefly
         const newSpace = document.getElementById(`space-${newPosition}`);
         if (newSpace) {
@@ -867,14 +1212,15 @@ function updatePlayerInfo() {
     const nameEl = document.getElementById('currentPlayerName');
     const moneyEl = document.getElementById('currentPlayerMoney');
 
-    if (gameState.currentPlayer) {
+    if (gameState.currentPlayer && nameEl && moneyEl) {
         nameEl.textContent = `${gameState.currentPlayer.token} ${gameState.currentPlayer.name}`;
         moneyEl.textContent = `₹${gameState.currentPlayer.money}`;
     }
-     const currentPlayer = gameState.currentPlayer;
+    
+    const currentPlayer = gameState.currentPlayer;
     if (currentPlayer && currentPlayer.inJail) {
         showJailOptions();
-        
+
         // Update UI to show jail status
         const playerStatus = document.getElementById('playerStatus');
         if (playerStatus) {
@@ -886,23 +1232,30 @@ function updatePlayerInfo() {
 }
 
 function updateDiceDisplay(dice1, dice2) {
-    document.getElementById('dice1').textContent = dice1;
-    document.getElementById('dice2').textContent = dice2;
+    const dice1El = document.getElementById('dice1');
+    const dice2El = document.getElementById('dice2');
+    
+    if (dice1El) dice1El.textContent = dice1;
+    if (dice2El) dice2El.textContent = dice2;
 }
 
 function addToGameLog(message) {
     const gameLog = document.getElementById('gameLog');
+    const spectatorLog = document.getElementById('spectatorGameLog');
+
     if (gameLog) {
         const entry = document.createElement('div');
         entry.className = 'log-entry';
         entry.textContent = message;
         gameLog.appendChild(entry);
         gameLog.scrollTop = gameLog.scrollHeight;
-
-        // Keep only last 10 entries
-        while (gameLog.children.length > 10) {
-            gameLog.removeChild(gameLog.firstChild);
-        }
+    }
+    if (spectatorLog && gameState.isHost) {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.textContent = message;
+        spectatorLog.appendChild(entry);
+        spectatorLog.scrollTop = spectatorLog.scrollHeight;
     }
 }
 
@@ -918,8 +1271,8 @@ function updatePlayerProperties() {
     const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer.id);
     if (!currentPlayer) return;
 
-    const ownedProperties = gameState.board.filter(space => 
-        space.owner === currentPlayer.id && 
+    const ownedProperties = gameState.board.filter(space =>
+        space.owner === currentPlayer.id &&
         ['property', 'transport', 'utility'].includes(space.type)
     );
 
@@ -941,12 +1294,16 @@ function updatePlayerProperties() {
 }
 
 function updateAllPlayers() {
-    const allPlayersEl = document.getElementById('allPlayers');
-    if (!allPlayersEl || !gameState.players) return;
+    // Select both new, unique elements
+    const gameBoardPlayersEl = document.querySelector('#gameBoardAllPlayers');
+    const spectatorPlayersEl = document.querySelector('#spectatorAllPlayers');
 
-    allPlayersEl.innerHTML = gameState.players.map(player => {
+    if (!gameState.players) return;
+
+    // Generate the player list HTML once
+    const playersHtml = gameState.players.map(player => {
         const isCurrentPlayer = gameState.currentPlayer && player.id === gameState.currentPlayer.id;
-        const propertyCount = gameState.board ? 
+        const propertyCount = gameState.board ?
             gameState.board.filter(space => space.owner === player.id).length : 0;
 
         return `
@@ -962,14 +1319,44 @@ function updateAllPlayers() {
             </div>
         `;
     }).join('');
+
+    // Update the player's game board panel
+    if (gameBoardPlayersEl) {
+        gameBoardPlayersEl.innerHTML = playersHtml;
+    }
+
+    // Update the host's spectator panel
+    if (spectatorPlayersEl) {
+        spectatorPlayersEl.innerHTML = playersHtml;
+    }
 }
 
 function showStatus(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 
+    // Remove existing status messages
+    document.querySelectorAll('.status-message').forEach(msg => msg.remove());
+
     const statusDiv = document.createElement('div');
     statusDiv.className = `status-message status-${type}`;
     statusDiv.textContent = message;
+
+    // Add close button for error messages
+    if (type === 'error') {
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '×';
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            margin-left: 10px;
+            cursor: pointer;
+        `;
+        closeBtn.onclick = () => statusDiv.remove();
+        statusDiv.appendChild(closeBtn);
+    }
+
     statusDiv.style.cssText = `
         position: fixed;
         top: 20px;
@@ -980,9 +1367,11 @@ function showStatus(message, type = 'info') {
         font-weight: 600;
         z-index: 1000;
         animation: slideIn 0.3s ease;
+        max-width: 350px;
+        word-wrap: break-word;
     `;
 
-    switch(type) {
+    switch (type) {
         case 'success': statusDiv.style.backgroundColor = '#059669'; break;
         case 'error': statusDiv.style.backgroundColor = '#dc2626'; break;
         case 'warning': statusDiv.style.backgroundColor = '#d97706'; break;
@@ -991,9 +1380,12 @@ function showStatus(message, type = 'info') {
 
     document.body.appendChild(statusDiv);
 
+    // Auto-remove after delay (longer for errors)
+    const delay = type === 'error' ? 8000 : 4000;
     setTimeout(() => {
         if (statusDiv.parentNode) {
-            statusDiv.parentNode.removeChild(statusDiv);
+            statusDiv.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => statusDiv.remove(), 300);
         }
-    }, 4000);
+    }, delay);
 }

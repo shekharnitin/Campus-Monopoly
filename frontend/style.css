@@ -160,34 +160,75 @@ body {
   border-color: var(--color-primary);
 }
 
-/* Host Dashboard */
-.host-container {
-  background: var(--color-surface);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  min-width: 600px;
-  max-width: 800px;
-  width: 100%;
+/* Host Spectator View */
+.spectator-container {
+    max-width: 1400px;
+    width: 100%;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 1rem;
+    padding: 1rem;
 }
 
-.host-header {
-  background: var(--color-primary);
-  color: white;
-  padding: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.spectator-header {
+    background: var(--color-surface);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.game-code-display {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.spectator-content {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 2rem;
+    height: 100%;
 }
 
-.host-content {
-  padding: 2rem;
+.host-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.host-control-panel {
+    background: var(--color-surface);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.control-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.game-stats {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 4px solid var(--color-primary);
+}
+
+.game-stats p {
+    margin-bottom: 0.5rem;
+}
+
+.game-log-panel {
+    background: var(--color-surface);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+#spectatorGameLog {
+    max-height: 200px;
 }
 
 .players-section h3 {
@@ -865,4 +906,35 @@ body {
 .board-space.has-hotel:hover::after {
     transform: scale(1.1);
     box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* Status message animations */
+@keyframes slideIn {
+    from { 
+        transform: translateX(100%); 
+        opacity: 0; 
+    }
+    to { 
+        transform: translateX(0); 
+        opacity: 1; 
+    }
+}
+
+@keyframes slideOut {
+    from { 
+        transform: translateX(0); 
+        opacity: 1; 
+    }
+    to { 
+        transform: translateX(100%); 
+        opacity: 0; 
+    }
+}
+
+.status-message {
+    animation: slideIn 0.3s ease;
+}
+
+.status-message.fade-out {
+    animation: slideOut 0.3s ease;
 }

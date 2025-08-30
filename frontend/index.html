@@ -42,48 +42,54 @@
 
     <!-- Player Waiting Screen -->
     <div id="playerWaiting" class="screen hidden">
-        <div class="waiting-container">
-            <h2>Joined Game Successfully!</h2>
-            <div class="game-info">
-                <p>Game Code: <strong id="waitingGameCode"></strong></p>
-                <p>Waiting for host to start the game...</p>
-            </div>
-            <div class="waiting-animation">
-                <div class="spinner"></div>
+    <div class="waiting-container">
+        <h1>🎮 Campus Monopoly</h1>
+        <p>Game Code: <strong id="waitingGameCode">------</strong></p>
+        <p>Waiting for host to start the game...</p>
+        
+        <!-- Add player list for waiting players -->
+        <div class="players-section">
+            <h3>Players in Game (<span id="waitingPlayerCount">0</span>)</h3>
+            <div id="waitingPlayersList" class="players-list">
+                <div class="text-muted">Loading players...</div>
             </div>
         </div>
+        
+        <div class="waiting-animation">
+            <div class="spinner"></div>
+        </div>
     </div>
+</div>
 
     <!-- Host Dashboard -->
     <div id="hostDashboard" class="screen hidden">
-        <div class="host-container">
-            <div class="host-header">
-                <h2>Host Dashboard</h2>
-                <div class="game-code-display">
-                    <span>Game Code: <strong id="hostGameCode"></strong></span>
-                    <button class="btn btn--small" id="copyCodeBtn">Copy</button>
-                </div>
-            </div>
-
-            <div class="host-content">
-                <div class="players-section">
-                    <h3>Players (<span id="playerCount">0</span>/8)</h3>
-                    <div id="playersList" class="players-list"></div>
-                </div>
-
-                <div class="game-controls">
-                    <button class="btn btn--success" id="startGameBtn" disabled>Start Game</button>
-                    <button class="btn btn--danger" id="endGameBtn">End Game</button>
-                </div>
-
-                <div class="game-status">
-                    <h3>Game Status</h3>
-                    <div id="gameStatus">Waiting for players...</div>
-                    <div id="currentPlayerStatus"></div>
-                </div>
-            </div>
-        </div>
+  <div class="host-container">
+    <div class="host-header">
+      <div>
+        <h1>🎮 Host Dashboard</h1>
+        <p>You are the game host/spectator</p>
+      </div>
+      <div class="game-code-display">
+        <span>Game Code: <strong id="hostGameCode">------</strong></span>
+        <button id="copyCodeBtn" class="btn btn--secondary btn--small">Copy Code</button>
+      </div>
     </div>
+    
+    <div class="host-content">
+      <div class="players-section">
+        <h3>Players Joined (<span id="playerCount">0</span>)</h3>
+        <div id="playersList" class="players-list">
+          <div class="text-muted">Waiting for players to join...</div>
+        </div>
+      </div>
+      
+      <div class="game-controls">
+        <button id="startGameBtn" class="btn btn--success" disabled>Start Game (Need 2+ players)</button>
+        <button id="endGameHostBtn" class="btn btn--danger">End Game</button>
+      </div>
+    </div>
+  </div>
+</div>
 
     <div id="cardModal" class="card-modal">
         <div class="card-modal-content">
@@ -92,7 +98,49 @@
             <button onclick="closeCardModal()">Continue</button>
         </div>
     </div>
-    <!-- Add this inside your game controls section -->
+    <!-- Host Spectator View -->
+    <div id="hostSpectatorView" class="screen hidden">
+        <div class="spectator-container">
+            <div class="spectator-header">
+                <h1>🎮 Host Dashboard - Spectating Game</h1>
+                <div class="game-code-display">
+                    <span>Game Code: <strong id="spectatorGameCode"></strong></span>
+                    <button id="copySpectatorCodeBtn" class="btn btn--secondary btn--small">Copy Code</button>
+                </div>
+            </div>
+
+            <div class="spectator-content">
+                <div class="game-area">
+                    <!-- Same monopoly board as regular game -->
+                    <div class="monopoly-board" id="spectatorBoard">
+                        <div class="board-center">
+                            <h2>Campus Monopoly</h2>
+                            <div class="current-turn-info">
+                                <p>Current Turn:</p>
+                                <div id="currentTurnPlayer">-</div>
+                            </div>
+                        </div>
+                        <div class="board-spaces" id="spectatorBoardSpaces"></div>
+                    </div>
+                </div>
+
+                <div class="host-sidebar">
+                    <div id="hostControls" class="host-controls"></div>
+
+                    <div class="players-panel">
+                        <h3>Players in Game</h3>
+                        <div id="spectatorAllPlayers"></div>
+                    </div>
+
+                    <div class="game-log-panel">
+                        <h3>Game Log</h3>
+                        <div id="spectatorGameLog" class="game-log"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
 
 
@@ -150,7 +198,7 @@
 
                 <div class="players-panel">
                     <h3>All Players</h3>
-                    <div id="allPlayers"></div>
+                    <div id="gameBoardAllPlayers"></div>
                 </div>
                 <div id="jailCardCounter" class="jail-card-counter">
                     🃏 Get Out of Jail Free Cards: <span id="jailCardsCount">0</span>

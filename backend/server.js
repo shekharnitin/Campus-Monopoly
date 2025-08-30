@@ -610,37 +610,27 @@ io.on("connection", (socket) => {
             }
 
             const game = createNewGame(value.hostName, socket.id);
-            const hostPlayer = {
-                id: uuidv4(),
-                socketId: socket.id,
-                name: value.hostName,
-                money: gameConfig.startingMoney,
-                position: 0,
-                properties: [],
-                inJail: false,
-                jailTurns: 0,
-                token: playerTokens[0],
-                bankrupt: false,
-            };
-            game.players.push(hostPlayer);
-
+            // DON'T add host as a player anymore - just create the game
             socket.join(game.code);
             players.set(socket.id, {
                 gameCode: game.code,
-                playerId: hostPlayer.id,
                 isHost: true,
+                playerId: null  // Host has no player ID
             });
 
             socket.emit("gameCreated", {
                 gameCode: game.code,
                 hostId: game.hostId,
                 game: game,
+                isHost: true
             });
 
-            console.log(`Game created: ${game.code} by ${value.hostName}`);
+            console.log(`Game created: ${game.code} by ${value.hostName} (Host Only)`);
         } catch (err) {
+            console.error("Create game error:", err);
             socket.emit("error", { message: "Failed to create game" });
         }
+
     });
 
     socket.on("joinGame", (data) => {
@@ -656,6 +646,7 @@ io.on("connection", (socket) => {
                 value.playerName,
                 socket.id
             );
+
             if (!result) {
                 socket.emit("error", { message: "Game not found" });
                 return;
@@ -668,26 +659,22 @@ io.on("connection", (socket) => {
 
             socket.join(value.gameCode);
 
+            // Send confirmation to the joining player
             socket.emit("gameJoined", {
                 player: result.player,
                 game: result.game,
             });
 
+            // Notify ALL other players in the room (including host) about the new player
             socket.to(value.gameCode).emit("playerJoined", {
                 player: result.player,
+                game: result.game,  // Send full game object to everyone
                 playerCount: result.game.players.length,
             });
 
-            const hostSocket = io.sockets.sockets.get(result.game.hostId);
-            if (hostSocket) {
-                hostSocket.emit("playerJoined", {
-                    player: result.player,
-                    game: result.game,
-                });
-            }
-
             console.log(`Player ${value.playerName} joined game ${value.gameCode}`);
         } catch (err) {
+            console.error("Join game error:", err);
             socket.emit("error", { message: "Failed to join game" });
         }
     });
@@ -724,100 +711,165 @@ io.on("connection", (socket) => {
         console.log(`Game ${game.code} started`);
     });
 
+    // Host can pause/resume game
+    socket.on("pauseGame", (data) => {
+        const playerInfo = players.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) {
+            socket.emit("error", { message: "Only host can pause game" });
+            return;
+        }
+
+        const game = games.get(playerInfo.gameCode);
+        if (!game) return;
+
+        game.gameState = game.gameState === "paused" ? "playing" : "paused";
+        io.to(game.code).emit("gameStateChanged", {
+            gameState: game.gameState,
+            message: `Game ${game.gameState} by host`
+        });
+    });
+
+    // Host can kick players
+    socket.on("kickPlayer", (data) => {
+        const playerInfo = players.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) {
+            socket.emit("error", { message: "Only host can kick players" });
+            return;
+        }
+
+        const game = games.get(playerInfo.gameCode);
+        if (!game) return;
+
+        // Find and remove player
+        const kickedPlayer = game.players.find(p => p.id === data.playerId);
+        if (kickedPlayer) {
+            game.players = game.players.filter(p => p.id !== data.playerId);
+
+            // Notify kicked player
+            io.to(kickedPlayer.socketId).emit("playerKicked", {
+                reason: "Kicked by host"
+            });
+
+            // Update all players
+            io.to(game.code).emit("playerLeft", {
+                playerId: data.playerId,
+                playerName: kickedPlayer.name,
+                playerCount: game.players.length,
+                reason: "Kicked by host"
+            });
+        }
+    });
+
+
     socket.on("rollDice", (data) => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo) {
             socket.emit("error", { message: "Player not in any game" });
             return;
         }
-
+        if (playerInfo.isHost) {
+            socket.emit("error", { message: "Host cannot participate in gameplay" });
+            return;
+        }
         const game = games.get(playerInfo.gameCode);
-        if (!game || game.gameState !== "playing") {
+        if (!game) {
+            socket.emit("error", { message: "Game not found" });
+            return;
+        }
+
+        if (game.gameState !== "playing") {
             socket.emit("error", { message: "Game not in progress" });
             return;
         }
 
+        if (game.currentPlayerIndex >= game.players.length || game.currentPlayerIndex < 0) {
+            console.error("Invalid current player index:", game.currentPlayerIndex);
+            game.currentPlayerIndex = 0; // Reset to first player
+        }
         const currentPlayer = game.players[game.currentPlayerIndex];
+        if (!currentPlayer) {
+            socket.emit("error", { message: "Current player not found" });
+            return;
+        }
         if (currentPlayer.socketId !== socket.id) {
             socket.emit("error", { message: "Not your turn" });
             return;
         }
+        try {
+            const dice = rollDice();
+            const totalRoll = dice[0] + dice[1];
+            const isDoubles = dice[0] === dice[1];
 
-        const dice = rollDice();
-        const totalRoll = dice[0] + dice[1];
-        const isDoubles = dice[0] === dice[1];
-
-        // Handle jail turns
-        if (currentPlayer.inJail) {
-            const playerMoved = handleJailTurn(game, currentPlayer, dice);
-
-            io.to(game.code).emit("diceRolled", {
-                player: currentPlayer,
-                dice: dice,
-                totalRoll: totalRoll,
-                isDoubles: isDoubles,
-                inJail: true,
-                newPosition: currentPlayer.position,
-                landedProperty: game.board[currentPlayer.position],
-                game: game,
-            });
-
-            if (playerMoved) {
-                handlePropertyLanding(
-                    game,
-                    currentPlayer,
-                    game.board[currentPlayer.position],
-                    dice
-                );
-            }
-            return;
-        }
-
-        // Track consecutive doubles
-        if (!currentPlayer.doublesCount) currentPlayer.doublesCount = 0;
-
-        if (isDoubles) {
-            currentPlayer.doublesCount++;
-
-            // 3 doubles in a row = go to jail
-            if (currentPlayer.doublesCount >= 3) {
-                game.gameLog.push(`${currentPlayer.name} rolled 3 doubles in a row!`);
-                sendPlayerToJail(game, currentPlayer);
+            // Handle jail turns
+            if (currentPlayer.inJail) {
+                const playerMoved = handleJailTurn(game, currentPlayer, dice);
 
                 io.to(game.code).emit("diceRolled", {
                     player: currentPlayer,
                     dice: dice,
                     totalRoll: totalRoll,
                     isDoubles: isDoubles,
-                    tripledDoubles: true,
+                    inJail: true,
                     newPosition: currentPlayer.position,
                     landedProperty: game.board[currentPlayer.position],
                     game: game,
                 });
+
+                if (playerMoved) {
+                    handlePropertyLanding(game, currentPlayer, game.board[currentPlayer.position], dice);
+                }
                 return;
             }
-        } else {
-            currentPlayer.doublesCount = 0; // Reset if not doubles
+
+            // Track consecutive doubles
+            if (!currentPlayer.doublesCount) currentPlayer.doublesCount = 0;
+
+            if (isDoubles) {
+                currentPlayer.doublesCount++;
+
+                // 3 doubles in a row = go to jail
+                if (currentPlayer.doublesCount >= 3) {
+                    game.gameLog.push(`${currentPlayer.name} rolled 3 doubles in a row!`);
+                    sendPlayerToJail(game, currentPlayer);
+
+                    io.to(game.code).emit("diceRolled", {
+                        player: currentPlayer,
+                        dice: dice,
+                        totalRoll: totalRoll,
+                        isDoubles: isDoubles,
+                        tripledDoubles: true,
+                        newPosition: currentPlayer.position,
+                        landedProperty: game.board[currentPlayer.position],
+                        game: game,
+                    });
+                    return;
+                }
+            } else {
+                currentPlayer.doublesCount = 0; // Reset if not doubles
+            }
+
+            movePlayer(game, currentPlayer.id, totalRoll);
+
+            const landedProperty = game.board[currentPlayer.position];
+            game.gameLog.push(
+                `${currentPlayer.name} rolled ${dice[0]}+${dice[1]}=${totalRoll} and landed on ${landedProperty.name}`
+            );
+
+            io.to(game.code).emit("diceRolled", {
+                player: currentPlayer,
+                dice: dice,
+                totalRoll: totalRoll,
+                isDoubles: isDoubles,
+                newPosition: currentPlayer.position,
+                landedProperty: landedProperty,
+                game: game,
+            });
+
+            handlePropertyLanding(game, currentPlayer, landedProperty, dice);
+        } catch (err) {
+            console.error("Roll dice error:", err);
+            socket.emit("error", { message: "Failed to roll dice" })
         }
-
-        movePlayer(game, currentPlayer.id, totalRoll);
-
-        const landedProperty = game.board[currentPlayer.position];
-        game.gameLog.push(
-            `${currentPlayer.name} rolled ${dice[0]}+${dice[1]}=${totalRoll} and landed on ${landedProperty.name}`
-        );
-
-        io.to(game.code).emit("diceRolled", {
-            player: currentPlayer,
-            dice: dice,
-            totalRoll: totalRoll,
-            isDoubles: isDoubles,
-            newPosition: currentPlayer.position,
-            landedProperty: landedProperty,
-            game: game,
-        });
-
-        handlePropertyLanding(game, currentPlayer, landedProperty, dice);
     });
 
     socket.on("buyProperty", (data) => {
@@ -952,33 +1004,76 @@ io.on("connection", (socket) => {
             useGetOutOfJailCard(game, player);
         }
     });
+    socket.on("endGameByHost", () => {
+        const playerInfo = players.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) {
+            return socket.emit("error", { message: "Only the host can end the game." });
+        }
+
+        const game = games.get(playerInfo.gameCode);
+        if (!game) {
+            return socket.emit("error", { message: "Game not found." });
+        }
+
+        console.log(`Host ended game: ${game.code}`);
+
+        // Notify all players (including the host) that the game has ended
+        io.to(game.code).emit("gameEnded", {
+            reason: "The host has ended the game."
+        });
+
+        // Clean up server state by removing all players and the game itself
+        game.players.forEach(player => {
+            players.delete(player.socketId);
+        });
+        players.delete(socket.id); // Remove the host
+        games.delete(game.code); // Delete the game
+    });
 
     socket.on("disconnect", () => {
         console.log(`Player disconnected: ${socket.id}`);
-
         const playerInfo = players.get(socket.id);
         if (playerInfo) {
             const game = games.get(playerInfo.gameCode);
             if (game) {
-                game.players = game.players.filter((p) => p.socketId !== socket.id);
-
-                socket.to(playerInfo.gameCode).emit("playerLeft", {
-                    playerId: playerInfo.playerId,
-                    playerCount: game.players.length,
-                });
-
-                if (game.hostId === socket.id) {
+                if (playerInfo.isHost) {
+                    // Host disconnected - end game or transfer host
+                    console.log(`Host disconnected from game: ${playerInfo.gameCode}`);
                     io.to(playerInfo.gameCode).emit("gameEnded", {
-                        reason: "Host left the game",
+                        reason: "Host left the game"
+                    });
+                    game.players.forEach(player => {
+                        players.delete(player.socketId);
                     });
                     games.delete(playerInfo.gameCode);
-                }
+                } else {
+                    // Regular player disconnected
+                    const playerIndex = game.players.findIndex(p => p.socketId === socket.id);
+                    if (playerIndex !== -1) {
+                        const disconnectedPlayer = game.players[playerIndex];
 
-                if (game.players.length === 0) {
-                    games.delete(playerInfo.gameCode);
+                        // Mark as bankrupt instead of removing to maintain game flow
+                        disconnectedPlayer.bankrupt = true;
+
+                        socket.to(playerInfo.gameCode).emit("playerLeft", {
+                            playerId: playerInfo.playerId,
+                            playerName: disconnectedPlayer.name,
+                            playerCount: game.players.filter(p => !p.bankrupt).length,
+                            reason: "Player disconnected"
+                        });
+
+                        // Check if game should end
+                        const activePlayers = game.players.filter(p => !p.bankrupt);
+                        if (activePlayers.length <= 1 && game.gameState === "playing") {
+                            game.gameState = "finished";
+                            io.to(game.code).emit("gameEnded", {
+                                winner: activePlayers[0] || null,
+                                reason: "Not enough players remaining"
+                            });
+                        }
+                    }
                 }
             }
-
             players.delete(socket.id);
         }
     });
@@ -1295,13 +1390,28 @@ function useGetOutOfJailCard(game, player) {
 }
 
 function endPlayerTurn(game) {
+    const activePlayers = game.players.filter(p => !p.bankrupt);
+    if (activePlayers.length <= 1) {
+        game.gameState = "finished";
+        io.to(game.code).emit("gameEnded", {
+            winner: activePlayers[0] || null,
+            reason: "Game completed"
+        });
+        return;
+    }
+    // Find next active player
+    let attempts = 0;
+    const maxAttempts = game.players.length;
     do {
-        game.currentPlayerIndex =
-            (game.currentPlayerIndex + 1) % game.players.length;
-    } while (
-        game.players[game.currentPlayerIndex].bankrupt &&
-        game.players.filter((p) => !p.bankrupt).length > 1
-    );
+        game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
+        attempts++;
+
+        if (attempts > maxAttempts) {
+            console.error("Could not find next active player");
+            game.currentPlayerIndex = 0;
+            break;
+        }
+    } while (game.players[game.currentPlayerIndex].bankrupt);
 
     const nextPlayer = game.players[game.currentPlayerIndex];
 
