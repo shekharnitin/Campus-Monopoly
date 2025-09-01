@@ -484,94 +484,61 @@ function handleGameStarted(data) {
 }
 
 function createSpectatorBoard() {
-    const spectatorBoardSpaces = document.getElementById('spectatorBoardSpaces');
-    if (!spectatorBoardSpaces) return;
+    // 1. Target the spectator's .monopoly-board grid container
+    const spectatorBoard = document.querySelector('#spectatorBoard.monopoly-board');
+    if (!spectatorBoard) return;
 
-    spectatorBoardSpaces.innerHTML = '';
+    // Clear only the spaces, keeping the center div
+    spectatorBoard.querySelectorAll('.board-space').forEach(space => space.remove());
 
-    campusBuildings.forEach((building, index) => {
+    campusBuildings.forEach((building) => {
         const space = document.createElement('div');
         space.className = `board-space ${building.color || building.type}`;
-        space.setAttribute('data-position', index);
+        
+        // Use the 'position' from the server data
+        space.setAttribute('data-position', building.position);
+        
         space.innerHTML = `
             <div class="space-name">${building.name}</div>
             ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
         `;
-        space.id = `spectator-space-${index}`;
+        
+        // Set the ID to match the CSS Grid positioning (position + 1)
+        space.id = `space-${building.position + 1}`;
 
-        // Position spaces in rectangle (Monopoly board layout)
-        let x, y;
-        if (index <= 10) {
-            x = 90 - (index * 8);
-            y = 90;
-        } else if (index <= 20) {
-            x = 10;
-            y = 90 - ((index - 10) * 8);
-        } else if (index <= 30) {
-            x = 10 + ((index - 20) * 8);
-            y = 10;
-        } else {
-            x = 90;
-            y = 10 + ((index - 30) * 8);
-        }
-
-        space.style.left = `${x}%`;
-        space.style.top = `${y}%`;
-        space.style.width = '80px';
-        space.style.height = '60px';
-
-        spectatorBoardSpaces.appendChild(space);
+        spectatorBoard.appendChild(space);
     });
 }
 
 function createBoard() {
-    const boardSpaces = document.getElementById('boardSpaces');
-    if (!boardSpaces) return;
+    // 1. Target the .monopoly-board grid container directly
+    const boardContainer = document.querySelector('#gameBoard .monopoly-board');
+    if (!boardContainer) return;
 
-    boardSpaces.innerHTML = '';
+    // Clear only the spaces, keeping the center div
+    boardContainer.querySelectorAll('.board-space').forEach(space => space.remove());
 
-    campusBuildings.forEach((building, index) => {
+    campusBuildings.forEach((building) => {
         const space = document.createElement('div');
         space.className = `board-space ${building.color || building.type}`;
-        space.setAttribute('data-position', index);
+        
+        // Use the 'position' from the server data
+        space.setAttribute('data-position', building.position);
+        
         space.innerHTML = `
             <div class="space-name">${building.name}</div>
             ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
         `;
-        space.id = `space-${index}`;
+        
+        // Set the ID to match the CSS Grid positioning (position + 1)
+        space.id = `space-${building.position + 1}`;
 
-        // Position spaces in rectangle (Monopoly board layout)
-        let x, y;
-        if (index <= 10) {
-            // Bottom row (right to left)
-            x = 90 - (index * 8);
-            y = 90;
-        } else if (index <= 20) {
-            // Left column (bottom to top)
-            x = 10;
-            y = 90 - ((index - 10) * 8);
-        } else if (index <= 30) {
-            // Top row (left to right)
-            x = 10 + ((index - 20) * 8);
-            y = 10;
-        } else {
-            // Right column (top to bottom)
-            x = 90;
-            y = 10 + ((index - 30) * 8);
-        }
-
-        space.style.left = `${x}%`;
-        space.style.top = `${y}%`;
-        space.style.width = '80px';
-        space.style.height = '60px';
-
-        // Add hover events for property info
-        if (building.type === 'property' || building.type === 'transport' || building.type === 'utility') {
-            space.addEventListener('mouseenter', (e) => showPropertyInfo(e, building, index));
+        if (['property', 'transport', 'utility'].includes(building.type)) {
+            space.addEventListener('mouseenter', (e) => showPropertyInfo(e, building, building.position));
             space.addEventListener('mouseleave', hidePropertyInfo);
         }
 
-        boardSpaces.appendChild(space);
+        boardContainer.appendChild(space);
     });
 }
 
