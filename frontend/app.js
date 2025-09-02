@@ -1133,37 +1133,33 @@ function updatePlayerPieces() {
         // Use player.position + 1 to find the correct space ID (e.g., space-1, space-2)
         const correctSpaceId = `space-${player.position + 1}`;
 
-        // Find the space on the regular game board
-        const regularBoardSpace = document.getElementById(correctSpaceId);
+        // Find the space on the regular game board (inside #gameBoard container)
+        const regularBoardSpace = document.querySelector(`#gameBoard #${correctSpaceId}`);
         createAndAppendPiece(regularBoardSpace, player);
 
-        // Find the space on the host's spectator board
+        // Find the space on the host's spectator board (inside #spectatorBoard container)
         const spectatorBoardSpace = document.querySelector(`#spectatorBoard #${correctSpaceId}`);
         createAndAppendPiece(spectatorBoardSpace, player);
     });
 }
 
 function animatePlayerMovement(player, newPosition) {
-    // Find and remove the old piece
-    document.querySelectorAll('.player-piece').forEach(piece => {
-        if (piece.textContent === player.token && piece.title === player.name) {
-            piece.remove();
-        }
-    });
+    // THE FIX: The manual removal of the old piece has been deleted from here.
+    // We will now rely ONLY on updatePlayerPieces to handle clearing and redrawing.
 
-    // Add piece to new position with animation
+    // Add piece to new position after a short delay for animation effect
     setTimeout(() => {
+        // This function correctly removes ALL old pieces and redraws them in their new spots.
         updatePlayerPieces();
 
         // Highlight the new position briefly
-        const newSpace = document.getElementById(`space-${newPosition+1}`);
+        const newSpace = document.getElementById(`space-${newPosition + 1}`);
         if (newSpace) {
             newSpace.classList.add('highlight');
             setTimeout(() => newSpace.classList.remove('highlight'), 2000);
         }
     }, 500);
 }
-
 function getPlayerColor(token) {
     const colors = {
         '🎓': '#ff6b35', // Orange
