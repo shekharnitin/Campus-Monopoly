@@ -397,6 +397,13 @@ function initializeCardDecks() {
     };
 }
 
+function broadcastGameUpdate(game) {
+    if (game && game.code) {
+        // We use a new event 'gameUpdated' to push the full state.
+        io.to(game.code).emit("gameUpdated", { game });
+    }
+}
+
 // Game logic functions
 function rollDice() {
     return [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1];
@@ -1004,6 +1011,89 @@ io.on("connection", (socket) => {
             useGetOutOfJailCard(game, player);
         }
     });
+    socket.on("hostAction", (data) => {
+        const playerInfo = players.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) {
+            return socket.emit("error", { message: "Only the host can perform this action." });
+        }
+
+        const game = games.get(playerInfo.gameCode);
+        if (!game) {
+            return socket.emit("error", { message: "Game not found." });
+        }
+        let targetPlayer = null;
+        if (data.action !== 'broadcastMessage') {
+            targetPlayer = game.players.find(p => p.id === data.playerId);
+            if (!targetPlayer) {
+                return socket.emit("error", { message: "Target player not found." });
+            }
+        }
+
+        if (targetPlayer) {
+            console.log(`Host action received: ${data.action} for player ${targetPlayer.name}`);
+        } else {
+            console.log(`Host action received: ${data.action}`);
+        }
+
+        switch (data.action) {
+            case 'modifyMoney':
+                const amount = parseInt(data.amount, 10);
+                if (!isNaN(amount)) {
+                    targetPlayer.money += amount;
+                    game.gameLog.push(`Host adjusted ${targetPlayer.name}'s money by ${amount > 0 ? '+' : ''}${amount}.`);
+                }
+                break;
+            case 'forceEndTurn':
+                // Important: Verify it's actually the target player's turn before ending it.
+                if (game.players[game.currentPlayerIndex].id === data.playerId) {
+                    game.gameLog.push(`Host forced ${targetPlayer.name}'s turn to end.`);
+                    endPlayerTurn(game); // Reusing your existing function!
+                } else {
+                    // Silently ignore or send an error if it's not their turn
+                    return socket.emit("error", { message: "It is not that player's turn." });
+                }
+                break;
+            case 'broadcastMessage':
+                if (data.message && data.message.trim() !== '') {
+                    // Emit a new, specific event for this. It's more efficient.
+                    io.to(game.code).emit('hostMessage', { message: data.message });
+                }
+                break;
+            case 'kickPlayerIngame':
+                // Mark the player as bankrupt. This is an easy way to remove them from active play.
+                targetPlayer.bankrupt = true;
+
+                // Iterate through the entire board to find and free up their properties.
+                game.board.forEach(prop => {
+                    if (prop.owner === targetPlayer.id) {
+                        prop.owner = null;
+                        prop.houses = 0;
+                        prop.hotel = false;
+                        // You could also reset mortgaged status if you have it
+                        // prop.mortgaged = false;
+                    }
+                });
+
+                game.gameLog.push(`Host kicked ${targetPlayer.name} from the game. Their properties are now available.`);
+
+                // Notify all players that this player has left (reusing the existing 'playerLeft' event)
+                io.to(game.code).emit("playerLeft", {
+                    playerId: targetPlayer.id,
+                    playerName: targetPlayer.name,
+                    reason: "Kicked by host"
+                });
+
+                // Notify the kicked player specifically so their client returns to the main menu
+                // (reusing the existing 'playerKicked' event)
+                io.to(targetPlayer.socketId).emit("playerKicked", {
+                    reason: "You have been kicked by the host."
+                });
+                break;
+        }
+        if (data.action !== 'broadcastMessage') {
+            broadcastGameUpdate(game);
+        }
+    });
     socket.on("endGameByHost", () => {
         const playerInfo = players.get(socket.id);
         if (!playerInfo || !playerInfo.isHost) {
@@ -1029,7 +1119,6 @@ io.on("connection", (socket) => {
         players.delete(socket.id); // Remove the host
         games.delete(game.code); // Delete the game
     });
-
     socket.on("disconnect", () => {
         console.log(`Player disconnected: ${socket.id}`);
         const playerInfo = players.get(socket.id);

@@ -87,7 +87,7 @@ function connectToServer() {
     }
 
     console.log(`Attempting to connect to: ${BACKEND_URL}`);
-    
+
     socket = io(BACKEND_URL, {
         transports: ['websocket', 'polling'],
         timeout: 10000,
@@ -117,7 +117,7 @@ function connectToServer() {
     socket.on('connect_error', (error) => {
         console.error('Connection error:', error);
         reconnectAttempts++;
-        
+
         if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
             showStatus('Failed to connect to server. Please check if the server is running on port 3001.', 'error');
         } else {
@@ -135,7 +135,7 @@ function connectToServer() {
 
 function setupSocketListeners() {
     if (!socket) return;
-    
+
     socket.on('gameCreated', handleGameCreated);
     socket.on('gameJoined', handleGameJoined);
     socket.on('playerJoined', handlePlayerJoined);
@@ -155,6 +155,20 @@ function setupSocketListeners() {
     socket.on('propertyBuilt', handlePropertyBuilt);
     socket.on('gameStateChanged', handleGameStateChanged);
     socket.on('playerKicked', handlePlayerKicked);
+    socket.on('gameUpdated', (data) => {
+        console.log("Full game state received from server.");
+        // Update the local game state with the authoritative one from the server
+        gameState.players = data.game.players;
+        gameState.board = data.game.board;
+        gameState.currentPlayer = data.game.players[data.game.currentPlayerIndex];
+        // Now, refresh all UI components
+        updateUI();
+        updateHostDashboard();
+    });
+    socket.on('hostMessage', (data) => {
+        // We can reuse our existing status popup to show the message
+        showStatus(`Host Announcement: ${data.message}`, 'info');
+    });
 }
 
 function initializeUI() {
@@ -170,7 +184,7 @@ function initializeUI() {
     // Host controls
     document.getElementById('startGameBtn').addEventListener('click', startGame);
     document.getElementById('endGameHostBtn').addEventListener('click', endGame);
-    
+
     // Add null check for copyCodeBtn
     const copyCodeBtn = document.getElementById('copyCodeBtn');
     if (copyCodeBtn) {
@@ -224,7 +238,7 @@ function rollDice() {
         showStatus('Connection lost. Please refresh the page.', 'error');
         return;
     }
-    
+
     if (gameState.gamePhase !== 'playing') {
         showStatus('Game is not in progress', 'warning');
         return;
@@ -345,7 +359,7 @@ function startGame() {
         showStatus('Connection lost. Cannot start game.', 'error');
         return;
     }
-    
+
     console.log('Starting game...');
     socket.emit('startGame');
 }
@@ -423,25 +437,25 @@ function handlePlayerJoined(data) {
     if (data.game && data.game.players) {
         gameState.players = data.game.players;
         updatePlayersList(data.game.players);
-        
+
         // Show notification about new player
         if (data.player && data.player.name) {
             showStatus(`${data.player.name} joined the game`, 'success');
         }
     }
-    
+
     // Update player count displays
     updatePlayerCount();
 }
 function updatePlayerCount() {
     const playerCountElements = document.querySelectorAll('#playerCount, #waitingPlayerCount');
-    
+
     playerCountElements.forEach(element => {
         if (element) {
             element.textContent = gameState.players.length;
         }
     });
-    
+
     // Update start button availability for host
     if (gameState.isHost) {
         const startBtn = document.getElementById('startGameBtn');
@@ -469,7 +483,7 @@ function handleGameStarted(data) {
         showScreen('hostSpectatorView');
         document.getElementById('spectatorGameCode').textContent = gameState.gameCode;
         updateHostDashboard();
-        
+
         // Copy board to spectator view
         createSpectatorBoard();
     } else {
@@ -494,15 +508,15 @@ function createSpectatorBoard() {
     campusBuildings.forEach((building) => {
         const space = document.createElement('div');
         space.className = `board-space ${building.color || building.type}`;
-        
+
         // Use the 'position' from the server data
         space.setAttribute('data-position', building.position);
-        
+
         space.innerHTML = `
             <div class="space-name">${building.name}</div>
             ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
         `;
-        
+
         // Set the ID to match the CSS Grid positioning (position + 1)
         space.id = `space-${building.position + 1}`;
 
@@ -521,15 +535,15 @@ function createBoard() {
     campusBuildings.forEach((building) => {
         const space = document.createElement('div');
         space.className = `board-space ${building.color || building.type}`;
-        
+
         // Use the 'position' from the server data
         space.setAttribute('data-position', building.position);
-        
+
         space.innerHTML = `
             <div class="space-name">${building.name}</div>
             ${building.price ? `<div class="space-price">₹${building.price}</div>` : ''}
         `;
-        
+
         // Set the ID to match the CSS Grid positioning (position + 1)
         space.id = `space-${building.position + 1}`;
 
@@ -550,7 +564,7 @@ function handleGameStateChanged(data) {
 
 function kickPlayer(playerId) {
     if (!gameState.isHost || !socket || !socket.connected) return;
-    
+
     if (confirm('Are you sure you want to kick this player?')) {
         socket.emit('kickPlayer', { playerId });
     }
@@ -586,7 +600,7 @@ function handleDiceRolled(data) {
 
     document.getElementById('endTurnBtn').style.display = 'inline-block';
     updateSidebar();
-    updateCurrentTurnDisplay();  
+    updateCurrentTurnDisplay();
 }
 
 function handlePropertyPurchased(data) {
@@ -663,7 +677,7 @@ function handleTurnEnded(data) {
     gameState.players = data.game.players;
     updatePlayerInfo();
     updateSidebar();
-    updateCurrentTurnDisplay(); 
+    updateCurrentTurnDisplay();
 
     // Hide action buttons
     document.getElementById('buyPropertyBtn').style.display = 'none';
@@ -772,6 +786,34 @@ function useJailCard() {
     }
 }
 
+function hostAction(action, playerId, extraData = {}) {
+    if (!socket || !socket.connected || !gameState.isHost) return;
+
+    socket.emit('hostAction', {
+        action,
+        playerId,
+        ...extraData
+    });
+}
+
+function modifyPlayerMoney(playerId, playerName) {
+    const amountStr = prompt(`Enter amount to add or subtract for ${playerName}:\n(e.g., 500 to add, -200 to subtract)`);
+    if (amountStr) {
+        const amount = parseInt(amountStr, 10);
+        if (!isNaN(amount)) {
+            hostAction('modifyMoney', playerId, { amount });
+        } else {
+            alert('Invalid number entered.');
+        }
+    }
+}
+
+function forcePlayerTurnEnd(playerId, playerName) {
+    if (confirm(`Are you sure you want to force an end to ${playerName}'s turn?`)) {
+        hostAction('forceEndTurn', playerId);
+    }
+}
+
 // UI update functions
 function updateHostDashboard() {
     if (!gameState.isHost) return;
@@ -800,11 +842,11 @@ function updateHostDashboard() {
     // Add event listeners to the NEWLY created buttons
     const pauseBtn = document.getElementById('pauseGameBtn');
     const endBtn = document.getElementById('spectatorEndGameBtn');
-    
+
     if (pauseBtn) {
         pauseBtn.addEventListener('click', pauseGame);
     }
-    
+
     if (endBtn) {
         endBtn.addEventListener('click', endGame);
     }
@@ -854,13 +896,13 @@ function updatePlayersList(players) {
     if (hostPlayersList) {
         updatePlayerListElement(hostPlayersList, players);
     }
-    
+
     // Update waiting screen player list
     const waitingPlayersList = document.getElementById('waitingPlayersList');
     if (waitingPlayersList) {
         updatePlayerListElement(waitingPlayersList, players);
     }
-    
+
     // Update spectator player list
     const spectatorPlayersList = document.getElementById('spectatorPlayersList');
     if (spectatorPlayersList) {
@@ -870,22 +912,22 @@ function updatePlayersList(players) {
 
 function updatePlayerListElement(listElement, players) {
     if (!listElement) return;
-    
+
     if (players.length === 0) {
         listElement.innerHTML = '<div class="text-muted">Waiting for players to join...</div>';
         return;
     }
-    
+
     listElement.innerHTML = players.map(player => `
         <div class="player-card">
             <div class="player-info">
                 <span class="player-token">${player.token}</span>
                 <span class="player-name">${player.name}</span>
             </div>
-            ${gameState.isHost && gameState.gamePhase === 'waiting' ? 
-                `<button class="btn btn--small btn--danger" onclick="kickPlayer('${player.id}')">Kick</button>` : 
-                ''
-            }
+            ${gameState.isHost && gameState.gamePhase === 'waiting' ?
+            `<button class="btn btn--small btn--danger" onclick="kickPlayer('${player.id}')">Kick</button>` :
+            ''
+        }
         </div>
     `).join('');
 }
@@ -1078,7 +1120,7 @@ function updateGameBoard() {
     // Update board with current game state
     if (gameState.board) {
         gameState.board.forEach((space, index) => {
-            const spaceElement = document.getElementById(`space-${index}`);
+            const spaceElement = document.getElementById(`space-${index + 1}`);
             if (spaceElement && space.owner) {
                 spaceElement.classList.add('owned');
 
@@ -1091,6 +1133,19 @@ function updateGameBoard() {
         });
     }
     updatePlayerPieces();
+}
+function broadcastHostMessage() {
+    const input = document.getElementById('broadcastMessageInput');
+    if (input && input.value.trim()) {
+        // This action has no specific playerId, so we pass null
+        hostAction('broadcastMessage', null, { message: input.value.trim() });
+        input.value = ''; // Clear the input after sending
+    }
+}
+function kickPlayerIngame(playerId, playerName) {
+    if (confirm(`Are you sure you want to kick ${playerName}?\nThis will make them bankrupt and all their properties will become unowned.`)) {
+        hostAction('kickPlayerIngame', playerId);
+    }
 }
 
 /**
@@ -1182,7 +1237,7 @@ function updatePlayerInfo() {
         nameEl.textContent = `${gameState.currentPlayer.token} ${gameState.currentPlayer.name}`;
         moneyEl.textContent = `₹${gameState.currentPlayer.money}`;
     }
-    
+
     const currentPlayer = gameState.currentPlayer;
     if (currentPlayer && currentPlayer.inJail) {
         showJailOptions();
@@ -1200,7 +1255,7 @@ function updatePlayerInfo() {
 function updateDiceDisplay(dice1, dice2) {
     const dice1El = document.getElementById('dice1');
     const dice2El = document.getElementById('dice2');
-    
+
     if (dice1El) dice1El.textContent = dice1;
     if (dice2El) dice2El.textContent = dice2;
 }
@@ -1266,7 +1321,7 @@ function updateAllPlayers() {
 
     if (!gameState.players) return;
 
-    // Generate the player list HTML once
+    // Generate the standard player list HTML for players view
     const playersHtml = gameState.players.map(player => {
         const isCurrentPlayer = gameState.currentPlayer && player.id === gameState.currentPlayer.id;
         const propertyCount = gameState.board ?
@@ -1286,13 +1341,37 @@ function updateAllPlayers() {
         `;
     }).join('');
 
-    // Update the player's game board panel
+    // Update the player's game board panel (no controls)
     if (gameBoardPlayersEl) {
         gameBoardPlayersEl.innerHTML = playersHtml;
     }
 
-    // Update the host's spectator panel
-    if (spectatorPlayersEl) {
+    // **NEW LOGIC**: Generate an enhanced list with controls for the host's spectator panel
+    if (spectatorPlayersEl && gameState.isHost) {
+        const hostPlayersHtml = gameState.players.map(player => {
+            const isCurrentPlayer = gameState.currentPlayer && player.id === gameState.currentPlayer.id;
+            const propertyCount = gameState.board ?
+                gameState.board.filter(space => space.owner === player.id).length : 0;
+            return `
+                <div class="player-summary ${isCurrentPlayer ? 'current-player' : ''} ${player.bankrupt ? 'bankrupt' : ''}">
+                    <div class="player-info">
+                        <span class="player-token">${player.token}</span>
+                        <span class="player-name">${player.name}</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-money">₹${player.money}</div>
+                        <div class="player-properties">${propertyCount} properties</div>
+                    </div>
+                    <div class="host-player-actions">
+                        <button class="btn btn--small btn--outline" onclick="modifyPlayerMoney('${player.id}', '${player.name}')" title="Modify Money">💰</button>
+                        <button class="btn btn--small btn--outline" onclick="forcePlayerTurnEnd('${player.id}', '${player.name}')" title="Force End Turn">⏭️</button>
+                        <button class="btn btn--small btn--danger" onclick="kickPlayerIngame('${player.id}', '${player.name}')" title="Kick Player">❌</button>
+                    </div>
+                </div>`;
+        }).join('');
+        spectatorPlayersEl.innerHTML = hostPlayersHtml;
+    } else if (spectatorPlayersEl) {
+        // If it's not the host, just show the simple list
         spectatorPlayersEl.innerHTML = playersHtml;
     }
 }

@@ -42,54 +42,54 @@
 
     <!-- Player Waiting Screen -->
     <div id="playerWaiting" class="screen hidden">
-    <div class="waiting-container">
-        <h1>🎮 Campus Monopoly</h1>
-        <p>Game Code: <strong id="waitingGameCode">------</strong></p>
-        <p>Waiting for host to start the game...</p>
-        
-        <!-- Add player list for waiting players -->
-        <div class="players-section">
-            <h3>Players in Game (<span id="waitingPlayerCount">0</span>)</h3>
-            <div id="waitingPlayersList" class="players-list">
-                <div class="text-muted">Loading players...</div>
+        <div class="waiting-container">
+            <h1>🎮 Campus Monopoly</h1>
+            <p>Game Code: <strong id="waitingGameCode">------</strong></p>
+            <p>Waiting for host to start the game...</p>
+
+            <!-- Add player list for waiting players -->
+            <div class="players-section">
+                <h3>Players in Game (<span id="waitingPlayerCount">0</span>)</h3>
+                <div id="waitingPlayersList" class="players-list">
+                    <div class="text-muted">Loading players...</div>
+                </div>
+            </div>
+
+            <div class="waiting-animation">
+                <div class="spinner"></div>
             </div>
         </div>
-        
-        <div class="waiting-animation">
-            <div class="spinner"></div>
-        </div>
     </div>
-</div>
 
     <!-- Host Dashboard -->
     <div id="hostDashboard" class="screen hidden">
-  <div class="host-container">
-    <div class="host-header">
-      <div>
-        <h1>🎮 Host Dashboard</h1>
-        <p>You are the game host/spectator</p>
-      </div>
-      <div class="game-code-display">
-        <span>Game Code: <strong id="hostGameCode">------</strong></span>
-        <button id="copyCodeBtn" class="btn btn--secondary btn--small">Copy Code</button>
-      </div>
-    </div>
-    
-    <div class="host-content">
-      <div class="players-section">
-        <h3>Players Joined (<span id="playerCount">0</span>)</h3>
-        <div id="playersList" class="players-list">
-          <div class="text-muted">Waiting for players to join...</div>
+        <div class="host-container">
+            <div class="host-header">
+                <div>
+                    <h1>🎮 Host Dashboard</h1>
+                    <p>You are the game host/spectator</p>
+                </div>
+                <div class="game-code-display">
+                    <span>Game Code: <strong id="hostGameCode">------</strong></span>
+                    <button id="copyCodeBtn" class="btn btn--secondary btn--small">Copy Code</button>
+                </div>
+            </div>
+
+            <div class="host-content">
+                <div class="players-section">
+                    <h3>Players Joined (<span id="playerCount">0</span>)</h3>
+                    <div id="playersList" class="players-list">
+                        <div class="text-muted">Waiting for players to join...</div>
+                    </div>
+                </div>
+
+                <div class="game-controls">
+                    <button id="startGameBtn" class="btn btn--success" disabled>Start Game (Need 2+ players)</button>
+                    <button id="endGameHostBtn" class="btn btn--danger">End Game</button>
+                </div>
+            </div>
         </div>
-      </div>
-      
-      <div class="game-controls">
-        <button id="startGameBtn" class="btn btn--success" disabled>Start Game (Need 2+ players)</button>
-        <button id="endGameHostBtn" class="btn btn--danger">End Game</button>
-      </div>
     </div>
-  </div>
-</div>
 
     <div id="cardModal" class="card-modal">
         <div class="card-modal-content">
@@ -126,7 +126,14 @@
 
                 <div class="host-sidebar">
                     <div id="hostControls" class="host-controls"></div>
-
+                    <div class="host-broadcast-panel">
+                        <h3>Broadcast Message</h3>
+                        <div class="broadcast-input-group">
+                            <input type="text" id="broadcastMessageInput" class="form-control"
+                                placeholder="Announce something...">
+                            <button class="btn btn--secondary btn--small" onclick="broadcastHostMessage()">Send</button>
+                        </div>
+                    </div>
                     <div class="players-panel">
                         <h3>Players in Game</h3>
                         <div id="spectatorAllPlayers"></div>
