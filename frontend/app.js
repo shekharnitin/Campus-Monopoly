@@ -586,7 +586,7 @@ function handleDiceRolled(data) {
 
     document.getElementById('endTurnBtn').style.display = 'inline-block';
     updateSidebar();
-    updateCurrentTurnDisplay(); 
+    updateCurrentTurnDisplay();  
 }
 
 function handlePropertyPurchased(data) {
@@ -1121,7 +1121,7 @@ function createAndAppendPiece(targetSpace, player) {
 }
 
 function updatePlayerPieces() {
-     // Remove all existing player pieces from both boards
+    // Remove all existing player pieces from both boards
     document.querySelectorAll('.player-piece').forEach(piece => piece.remove());
 
     if (!gameState.players) return;
@@ -1130,12 +1130,15 @@ function updatePlayerPieces() {
     gameState.players.forEach(player => {
         if (player.bankrupt) return;
 
+        // Use player.position + 1 to find the correct space ID (e.g., space-1, space-2)
+        const correctSpaceId = `space-${player.position + 1}`;
+
         // Find the space on the regular game board
-        const regularBoardSpace = document.getElementById(`space-${player.position}`);
+        const regularBoardSpace = document.getElementById(correctSpaceId);
         createAndAppendPiece(regularBoardSpace, player);
 
         // Find the space on the host's spectator board
-        const spectatorBoardSpace = document.getElementById(`spectator-space-${player.position}`);
+        const spectatorBoardSpace = document.querySelector(`#spectatorBoard #${correctSpaceId}`);
         createAndAppendPiece(spectatorBoardSpace, player);
     });
 }
@@ -1153,7 +1156,7 @@ function animatePlayerMovement(player, newPosition) {
         updatePlayerPieces();
 
         // Highlight the new position briefly
-        const newSpace = document.getElementById(`space-${newPosition}`);
+        const newSpace = document.getElementById(`space-${newPosition+1}`);
         if (newSpace) {
             newSpace.classList.add('highlight');
             setTimeout(() => newSpace.classList.remove('highlight'), 2000);
